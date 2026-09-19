@@ -16,9 +16,9 @@ import { abortableFetch } from "@/lib/with-timeout";
 import type { TitleCard, VibeCard } from "@/lib/types";
 
 const STEPS = [
-  { id: "movies", title: "Movies", subtitle: "Swipe right to like, left to pass." },
-  { id: "tv", title: "TV shows", subtitle: "Same deal — right like, left nope." },
-  { id: "vibes", title: "Vibes", subtitle: "Seed the mood of your recs." },
+  { id: "movies", title: "Movies", subtitle: "Swipe right to like." },
+  { id: "tv", title: "TV shows", subtitle: "Swipe right to like." },
+  { id: "vibes", title: "Vibes", subtitle: "Pick moods you like." },
 ] as const;
 
 export default function OnboardingPage() {

@@ -17,11 +17,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <div className="flex h-dvh flex-col overflow-hidden bg-background">
       {!active ? (
         <header
-          className="relative z-20 shrink-0 border-b border-white/5 px-2"
+          className="relative z-20 shrink-0 px-2"
           style={{ paddingTop: "max(0.5rem, env(safe-area-inset-top))" }}
         >
-          {/* Blur on a sibling so it does not trap position:fixed (backdrop-filter containing block). */}
-          <div className="pointer-events-none absolute inset-0 bg-[#0c0614]/80 backdrop-blur-xl" />
           <div className="relative flex items-center gap-2">
             <HamburgerMenu />
             <BrandLogo href="/home" />

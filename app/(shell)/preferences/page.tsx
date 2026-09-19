@@ -19,16 +19,14 @@ export default function PreferencesPage() {
       </div>
       <section className="rounded-2xl border border-white/10 p-4">
         <h2 className="font-medium">Favorites, watchlist, seen-it</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Coming soon. Tables exist locally; this screen is a stub for v1.
-        </p>
+        <p className="mt-1 text-sm text-muted-foreground">Coming soon.</p>
       </section>
       <section className="rounded-2xl border border-white/10 p-4">
         <h2 className="font-medium">Liked vibes</h2>
         <p className="mt-1 text-sm text-muted-foreground">
           {guest.likedVibes.length
             ? guest.likedVibes.join(", ")
-            : "None yet — redo onboarding to set them."}
+            : "None yet."}
         </p>
       </section>
       <Button

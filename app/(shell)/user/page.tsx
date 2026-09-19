@@ -19,7 +19,7 @@ export default function UserPage() {
         <h1 className="mt-1 text-3xl font-semibold">Profile</h1>
       </div>
       <p className="text-sm text-muted-foreground">
-        {isGuest ? "You are on a guest session." : "You are signed in."}
+        {isGuest ? "Guest session." : "Signed in."}
       </p>
       <div className="space-y-2">
         <Label htmlFor="display-name">Display name</Label>

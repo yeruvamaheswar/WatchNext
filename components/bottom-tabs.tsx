@@ -9,7 +9,7 @@ export function BottomTabs() {
   const pathname = usePathname();
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-30 border-t border-white/10 bg-[#0c0614]/90 backdrop-blur-xl md:hidden"
+      className="fixed inset-x-0 bottom-0 z-30 bg-background md:hidden"
       style={{ paddingBottom: "max(0.5rem, env(safe-area-inset-bottom))" }}
     >
       <ul className="mx-auto flex max-w-lg">
