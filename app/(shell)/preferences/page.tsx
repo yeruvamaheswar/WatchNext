@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { useWatchNext } from "@/hooks/use-watchnext";
+import { primaryActionClass } from "@/lib/button-styles";
 
 export default function PreferencesPage() {
   const router = useRouter();
@@ -32,7 +33,7 @@ export default function PreferencesPage() {
       </section>
       <Button
         type="button"
-        className="h-12 rounded-full"
+        className={`w-full ${primaryActionClass}`}
         onClick={() => {
           resetOnboarding();
           router.push("/onboarding");

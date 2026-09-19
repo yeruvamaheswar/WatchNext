@@ -3,7 +3,30 @@
 import { cn } from "@/lib/utils";
 import type { OrbState } from "@/hooks/use-room-session";
 
-export function VoiceOrb({ state }: { state: OrbState }) {
+type OrbSize = "sm" | "md";
+
+const SIZE = {
+  sm: {
+    glow: "size-24",
+    ring: "size-[6.25rem]",
+    orb: "size-20",
+    shadow: "shadow-[0_0_36px_rgba(124,58,237,0.5)]",
+  },
+  md: {
+    glow: "size-40",
+    ring: "size-[9.5rem]",
+    orb: "size-32",
+    shadow: "shadow-[0_0_56px_rgba(124,58,237,0.5)]",
+  },
+} as const;
+
+export function VoiceOrb({
+  state,
+  size = "md",
+}: {
+  state: OrbState;
+  size?: OrbSize;
+}) {
   const label =
     state === "connecting"
       ? "Connecting"
@@ -14,24 +37,33 @@ export function VoiceOrb({ state }: { state: OrbState }) {
           : state === "speaking"
             ? "Speaking"
             : "Ready";
+  const box = SIZE[size];
 
   return (
-    <div className="flex flex-col items-center gap-5">
+    <div className="flex flex-col items-center gap-3">
       <div className="relative grid place-items-center">
         <div
           className={cn(
-            "absolute size-56 rounded-full bg-violet-600/30 blur-2xl transition-opacity duration-300",
+            "absolute rounded-full bg-violet-600/30 blur-2xl transition-opacity duration-300",
+            box.glow,
             state === "connecting" && "animate-pulse",
             state === "listening" && "animate-pulse",
             state === "speaking" && "animate-ping"
           )}
         />
         {state === "connecting" ? (
-          <div className="absolute size-[13.5rem] animate-spin rounded-full border-2 border-violet-200/20 border-t-violet-100" />
+          <div
+            className={cn(
+              "absolute animate-spin rounded-full border-2 border-violet-200/20 border-t-violet-100",
+              box.ring
+            )}
+          />
         ) : null}
         <div
           className={cn(
-            "relative size-44 rounded-full bg-[radial-gradient(circle_at_30%_25%,#e9d5ff,transparent_45%),radial-gradient(circle_at_70%_80%,#6d28d9,transparent_50%),linear-gradient(180deg,#7c3aed,#3b0764)] shadow-[0_0_80px_rgba(124,58,237,0.55)] transition-transform duration-300",
+            "relative rounded-full bg-[radial-gradient(circle_at_30%_25%,#e9d5ff,transparent_45%),radial-gradient(circle_at_70%_80%,#6d28d9,transparent_50%),linear-gradient(180deg,#7c3aed,#3b0764)] transition-transform duration-300",
+            box.orb,
+            box.shadow,
             state === "connecting" && "scale-95 opacity-90",
             state === "listening" && "scale-105 animate-pulse",
             state === "thinking" && "opacity-90",
@@ -39,7 +71,9 @@ export function VoiceOrb({ state }: { state: OrbState }) {
           )}
         />
       </div>
-      <p className="text-sm tracking-[0.25em] text-violet-200/80 uppercase">{label}</p>
+      <p className="text-[11px] tracking-[0.28em] text-violet-200/80 uppercase">
+        {label}
+      </p>
     </div>
   );
 }
