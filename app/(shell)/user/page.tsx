@@ -1,0 +1,44 @@
+"use client";
+
+import { useState } from "react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useWatchNext } from "@/hooks/use-watchnext";
+
+export default function UserPage() {
+  const { guest, isGuest, setDisplayName } = useWatchNext();
+  const [name, setName] = useState(guest.displayName);
+
+  return (
+    <main className="mx-auto flex max-w-lg flex-col gap-5 px-4 py-6">
+      <div>
+        <p className="text-xs tracking-[0.25em] text-violet-300 uppercase">User</p>
+        <h1 className="mt-1 text-3xl font-semibold">Profile</h1>
+      </div>
+      <p className="text-sm text-muted-foreground">
+        {isGuest ? "You are on a guest session." : "You are signed in."}
+      </p>
+      <div className="space-y-2">
+        <Label htmlFor="display-name">Display name</Label>
+        <Input
+          id="display-name"
+          className="h-11"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+        />
+      </div>
+      <Button
+        type="button"
+        className="h-12 rounded-full"
+        onClick={async () => {
+          await setDisplayName(name);
+          toast.success("Name saved.");
+        }}
+      >
+        Save
+      </Button>
+    </main>
+  );
+}
