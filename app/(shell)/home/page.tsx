@@ -4,9 +4,8 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { HealthBanner } from "@/components/health-banner";
 import { PosterTiles } from "@/components/poster-tiles";
-import { Button } from "@/components/ui/button";
+import { WatchOrb } from "@/components/watch-orb";
 import { useWatchNext } from "@/hooks/use-watchnext";
-import { primaryActionClass } from "@/lib/button-styles";
 import type { RecommendResult } from "@/lib/types";
 
 export default function HomePage() {
@@ -49,17 +48,22 @@ export default function HomePage() {
     }
   }
 
+  const action = (
+    <WatchOrb
+      loading={loading}
+      compact={Boolean(result)}
+      onClick={() => void recommend()}
+    />
+  );
+
   return (
-    <main className="mx-auto flex max-w-lg flex-col gap-6 px-4 py-6">
-      <div>
-        <p className="text-xs tracking-[0.25em] text-violet-300 uppercase">Home</p>
-        <h1 className="mt-1 text-3xl font-semibold">What should I watch?</h1>
-      </div>
+    <main className="mx-auto flex h-full max-w-lg flex-col px-4 py-6">
+      <h1 className="sr-only">Home</h1>
       <HealthBanner />
       {error ? (
         <div
           data-testid="recommend-error"
-          className="rounded-2xl border border-rose-500/30 bg-rose-950/40 px-4 py-3 text-sm text-rose-100"
+          className="mb-6 rounded-2xl border border-rose-500/30 bg-rose-950/40 px-4 py-3 text-sm text-rose-100"
         >
           <p>{error.message}</p>
           {error.hint ? (
@@ -67,18 +71,14 @@ export default function HomePage() {
           ) : null}
         </div>
       ) : null}
-      <Button
-        type="button"
-        className={`w-full md:max-w-xs ${primaryActionClass}`}
-        onClick={() => void recommend()}
-        disabled={loading}
-      >
-        {loading ? "Picking…" : "What should I watch?"}
-      </Button>
-      {result?.spokenPitch ? (
-        <p className="text-sm text-violet-100">{result.spokenPitch}</p>
-      ) : null}
-      {result ? <PosterTiles titles={result.titles} /> : null}
+      {result ? (
+        <div className="flex min-h-0 flex-1 flex-col gap-6">
+          <div className="flex justify-center">{action}</div>
+          <PosterTiles titles={result.titles} />
+        </div>
+      ) : (
+        <div className="flex min-h-0 flex-1 items-center justify-center">{action}</div>
+      )}
     </main>
   );
 }

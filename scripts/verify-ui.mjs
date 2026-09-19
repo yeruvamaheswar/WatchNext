@@ -62,7 +62,7 @@ async function main() {
     await page.screenshot({ path: `${out}/home-error.png` });
 
     await page.goto(`${origin}/room`, { waitUntil: "domcontentloaded" });
-    await page.waitForSelector("text=Start session");
+    await page.getByRole("button", { name: "Start session" }).waitFor();
     await page.screenshot({ path: `${out}/room-idle.png` });
     await page.screenshot({ path: `${out}/mobile-room.png` });
 
