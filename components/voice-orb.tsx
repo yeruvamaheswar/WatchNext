@@ -3,14 +3,20 @@
 import { cn } from "@/lib/utils";
 import type { OrbState } from "@/hooks/use-room-session";
 
-type OrbSize = "sm" | "md";
+type OrbSize = "xs" | "sm" | "md";
 
 const SIZE = {
+  xs: {
+    glow: "size-14",
+    ring: "size-16",
+    orb: "size-11",
+    shadow: "shadow-[0_0_18px_rgba(124,58,237,0.45)]",
+  },
   sm: {
-    glow: "size-24",
-    ring: "size-[6.25rem]",
-    orb: "size-20",
-    shadow: "shadow-[0_0_36px_rgba(124,58,237,0.5)]",
+    glow: "size-20",
+    ring: "size-[5.25rem]",
+    orb: "size-16",
+    shadow: "shadow-[0_0_28px_rgba(124,58,237,0.5)]",
   },
   md: {
     glow: "size-40",
@@ -24,10 +30,12 @@ export function VoiceOrb({
   state,
   size = "md",
   docked = false,
+  hideLabel = false,
 }: {
   state: OrbState;
   size?: OrbSize;
   docked?: boolean;
+  hideLabel?: boolean;
 }) {
   const label =
     state === "connecting"
@@ -42,16 +50,18 @@ export function VoiceOrb({
   const box = SIZE[size];
 
   return (
-    <div className="flex flex-col items-center gap-3">
+    <div className={cn("flex flex-col items-center", hideLabel ? "gap-0" : "gap-1.5 md:gap-3")}>
       <div
         className={cn(
           "relative grid place-items-center",
-          docked && "rounded-full p-1 ring-1 ring-white/20 md:p-0 md:ring-0"
+          docked && "rounded-full ring-1 ring-white/20 md:p-0 md:ring-0",
+          docked && (size === "xs" ? "p-px" : "p-0.5")
         )}
       >
         <div
           className={cn(
-            "absolute rounded-full bg-violet-600/30 blur-2xl transition-opacity duration-300",
+            "absolute rounded-full bg-violet-600/30 transition-opacity duration-300",
+            size === "xs" ? "blur-md" : "blur-2xl",
             box.glow,
             state === "connecting" && "animate-pulse",
             state === "listening" && "animate-pulse",
@@ -78,9 +88,13 @@ export function VoiceOrb({
           )}
         />
       </div>
-      <p className="text-[11px] font-medium tracking-[0.16em] text-violet-200/80 uppercase">
-        {label}
-      </p>
+      {hideLabel ? (
+        <span className="sr-only">{label}</span>
+      ) : (
+        <p className="text-[10px] font-medium tracking-[0.16em] text-violet-200/80 uppercase md:text-[11px]">
+          {label}
+        </p>
+      )}
     </div>
   );
 }

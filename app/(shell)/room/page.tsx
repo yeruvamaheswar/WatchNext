@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
-import { Mic, MicOff, PhoneOff, Sparkles } from "lucide-react";
+import { Clapperboard, Mic, MicOff, X } from "lucide-react";
 import { VoiceOrb } from "@/components/voice-orb";
 import { PosterTiles } from "@/components/poster-tiles";
 import { HealthBanner } from "@/components/health-banner";
@@ -69,19 +69,14 @@ export default function RoomPage() {
   }
 
   const hasResults = Boolean(room.result?.titles.length);
-  const cluster = (
-    <RoomDock
-      room={room}
-      compact={hasResults}
-    />
-  );
+  const cluster = <RoomDock room={room} compact={hasResults} />;
 
   return (
     <main
-      className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-[#0a0414] px-4 md:px-8"
+      className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-[#0a0414] px-3 md:px-8"
       style={{
-        paddingTop: "max(0.75rem, env(safe-area-inset-top))",
-        paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))",
+        paddingTop: "max(0.5rem, env(safe-area-inset-top))",
+        paddingBottom: "max(0.4rem, env(safe-area-inset-bottom))",
       }}
     >
       <div className="flex shrink-0 items-center justify-between">
@@ -98,7 +93,7 @@ export default function RoomPage() {
       </div>
 
       {hasResults && room.result ? (
-        <div className="grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)_auto] gap-3 py-3 md:grid-cols-[17rem_minmax(0,1fr)] md:grid-rows-1 md:gap-8 md:py-4">
+        <div className="grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)_auto] gap-2 py-2 md:grid-cols-[17rem_minmax(0,1fr)] md:grid-rows-1 md:gap-8 md:py-4">
           <div className="order-2 flex flex-col items-center justify-end md:order-1 md:justify-center">
             {cluster}
           </div>
@@ -107,7 +102,7 @@ export default function RoomPage() {
           </div>
         </div>
       ) : (
-        <div className="flex min-h-0 flex-1 flex-col items-center justify-end py-4 md:justify-center">
+        <div className="flex min-h-0 flex-1 flex-col items-center justify-end py-3 md:justify-center md:py-4">
           {cluster}
         </div>
       )}
@@ -122,33 +117,80 @@ function RoomDock({
   room: ReturnType<typeof useRoomSession>;
   compact: boolean;
 }) {
+  const orb = room.orb;
+  const micEnabled = room.micEnabled;
+  const controls = {
+    micEnabled,
+    muted: room.muted,
+    busy: room.busy,
+    connecting: orb === "connecting",
+    onMute: () => room.setMuted(!room.muted),
+    onSuggest: () => void room.suggest(),
+    onEnd: room.stop,
+  };
+
   return (
-    <div className="flex w-full max-w-sm flex-col items-center gap-2 md:gap-3">
-      <VoiceOrb state={room.orb} size={compact ? "sm" : "md"} docked />
-      <RoomCaption room={room} />
-      {!room.micEnabled ? (
+    <div
+      className={cn(
+        "flex w-full max-w-sm flex-col items-center",
+        compact ? "gap-1 md:gap-3" : "gap-1.5 md:gap-3"
+      )}
+    >
+      <div className="md:hidden">
+        <RoomCaption room={room} compact />
+      </div>
+
+      {!micEnabled ? (
         <RoomTextComposer
           busy={room.busy}
           onSubmit={(text) => void room.submitText(text)}
         />
       ) : null}
-      <RoomControls
-        micEnabled={room.micEnabled}
-        muted={room.muted}
-        busy={room.busy}
-        connecting={room.orb === "connecting"}
-        onMute={() => room.setMuted(!room.muted)}
-        onSuggest={() => void room.suggest()}
-        onEnd={room.stop}
-      />
+
+      <div className="flex w-full max-w-[13.5rem] items-center justify-between md:hidden">
+        {micEnabled ? (
+          <ControlKey
+            icon={room.muted ? <MicOff /> : <Mic />}
+            label={room.muted ? "Unmute" : "Mute"}
+            pressed={room.muted}
+            onClick={controls.onMute}
+            disabled={controls.connecting}
+            iconOnly
+          />
+        ) : (
+          <span className="size-8" />
+        )}
+        <VoiceOrb state={orb} size="xs" docked hideLabel />
+        <ControlKey
+          icon={<X />}
+          label="End"
+          danger
+          onClick={controls.onEnd}
+          iconOnly
+        />
+      </div>
+
+      <div className="hidden md:block">
+        <VoiceOrb state={orb} size={compact ? "sm" : "md"} docked />
+      </div>
+
+      <div className="hidden w-full md:block">
+        <RoomCaption room={room} compact={compact} />
+      </div>
+
+      <div className="hidden md:block">
+        <RoomControls {...controls} />
+      </div>
     </div>
   );
 }
 
 function RoomCaption({
   room,
+  compact = false,
 }: {
   room: ReturnType<typeof useRoomSession>;
+  compact?: boolean;
 }) {
   if (!room.captions) return null;
 
@@ -177,7 +219,14 @@ function RoomCaption({
   if (!body) return null;
 
   return (
-    <p className="line-clamp-2 min-h-10 max-w-sm text-center text-sm">
+    <p
+      className={cn(
+        "max-w-sm text-center",
+        compact
+          ? "line-clamp-1 text-xs text-violet-100/75 md:line-clamp-2 md:min-h-10 md:text-sm"
+          : "line-clamp-2 min-h-8 text-sm md:min-h-10"
+      )}
+    >
       {body}
     </p>
   );
@@ -201,7 +250,7 @@ function RoomControls({
   onEnd: () => void;
 }) {
   return (
-    <div className="flex items-center justify-center gap-4 md:items-start md:gap-6">
+    <div className="flex items-start justify-center gap-5 md:gap-6">
       {micEnabled ? (
         <ControlKey
           icon={muted ? <MicOff /> : <Mic />}
@@ -212,14 +261,14 @@ function RoomControls({
         />
       ) : null}
       <ControlKey
-        icon={<Sparkles />}
+        icon={<Clapperboard />}
         label="Suggest"
         emphasize
         onClick={onSuggest}
         disabled={busy || connecting}
       />
       <ControlKey
-        icon={<PhoneOff />}
+        icon={<X />}
         label="End"
         danger
         onClick={onEnd}
@@ -235,6 +284,7 @@ function ControlKey({
   danger,
   pressed,
   disabled,
+  iconOnly,
   onClick,
 }: {
   icon: ReactNode;
@@ -243,44 +293,65 @@ function ControlKey({
   danger?: boolean;
   pressed?: boolean;
   disabled?: boolean;
+  iconOnly?: boolean;
   onClick: () => void;
 }) {
   return (
     <button
       type="button"
       disabled={disabled}
+      aria-label={label}
+      title={label}
       aria-pressed={pressed}
       onClick={onClick}
-      className="group inline-flex items-center gap-1 disabled:pointer-events-none disabled:opacity-40 md:flex-col md:gap-1.5"
+      className={cn(
+        "group inline-flex items-center disabled:pointer-events-none disabled:opacity-40",
+        iconOnly ? "justify-center" : "flex-col gap-1 md:gap-1.5"
+      )}
     >
       <span
         className={cn(
-          "grid place-items-center transition-colors [&_svg]:size-3.5 md:size-12 md:rounded-2xl md:[&_svg]:size-5",
+          "grid place-items-center transition-colors",
+          iconOnly
+            ? "size-8 [&_svg]:size-[1.15rem]"
+            : "size-8 rounded-lg [&_svg]:size-4 md:size-12 md:rounded-2xl md:[&_svg]:size-5",
           emphasize &&
-            "text-violet-200 md:bg-violet-500/20 md:text-violet-100 md:ring-1 md:ring-inset md:ring-violet-300/25 md:group-hover:bg-violet-500/30",
+            (iconOnly
+              ? "text-violet-100"
+              : "text-violet-200 md:bg-violet-500/20 md:text-violet-100 md:ring-1 md:ring-inset md:ring-violet-300/25 md:group-hover:bg-violet-500/30"),
           danger &&
-            "text-rose-300/80 md:bg-white/6 md:text-rose-300/90 md:group-hover:bg-rose-500/15 md:group-hover:text-rose-200",
+            (iconOnly
+              ? "text-rose-300/85"
+              : "text-rose-300/80 md:bg-white/6 md:text-rose-300/90 md:group-hover:bg-rose-500/15 md:group-hover:text-rose-200"),
           !emphasize &&
             !danger &&
             (pressed
-              ? "text-white md:bg-white/16"
-              : "text-violet-200/70 md:bg-white/8 md:text-violet-100/85 md:group-hover:bg-white/12")
+              ? iconOnly
+                ? "text-white"
+                : "text-white md:bg-white/16"
+              : iconOnly
+                ? "text-violet-100/80"
+                : "text-violet-200/70 md:bg-white/8 md:text-violet-100/85 md:group-hover:bg-white/12")
         )}
       >
         {icon}
       </span>
-      <span
-        className={cn(
-          "text-[11px] md:text-xs",
-          emphasize && "text-violet-200 md:text-violet-200/65 md:group-hover:text-violet-100",
-          danger && "text-rose-300/75 md:text-violet-200/65 md:group-hover:text-violet-100",
-          !emphasize &&
-            !danger &&
-            "text-violet-200/60 md:text-violet-200/65 md:group-hover:text-violet-100"
-        )}
-      >
-        {label}
-      </span>
+      {iconOnly ? (
+        <span className="sr-only">{label}</span>
+      ) : (
+        <span
+          className={cn(
+            "text-[10px] md:text-xs",
+            emphasize && "text-violet-200 md:text-violet-200/65 md:group-hover:text-violet-100",
+            danger && "text-rose-300/75 md:text-violet-200/65 md:group-hover:text-violet-100",
+            !emphasize &&
+              !danger &&
+              "text-violet-200/60 md:text-violet-200/65 md:group-hover:text-violet-100"
+          )}
+        >
+          {label}
+        </span>
+      )}
     </button>
   );
 }
