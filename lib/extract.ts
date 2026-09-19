@@ -15,6 +15,33 @@ const emptyIntent = (): ExtractedIntent => ({
   excludeGenres: [],
 });
 
+const MEDIA_TOKENS: Record<string, "movie" | "tv"> = {
+  movie: "movie",
+  movies: "movie",
+  film: "movie",
+  films: "movie",
+  tv: "tv",
+  show: "tv",
+  shows: "tv",
+  series: "tv",
+};
+
+/** Move movie/tv tokens out of genres so match_titles include_genres still hits TMDB names. */
+export function normalizeExtractedIntent(intent: ExtractedIntent): ExtractedIntent {
+  let mediaType = intent.mediaType;
+  const genres: string[] = [];
+  for (const raw of intent.genres ?? []) {
+    const key = raw.trim().toLowerCase();
+    const mapped = MEDIA_TOKENS[key];
+    if (mapped) {
+      if (!mediaType || mediaType === "any") mediaType = mapped;
+      continue;
+    }
+    if (raw.trim()) genres.push(raw);
+  }
+  return { ...intent, genres, mediaType };
+}
+
 export async function extractIntent(
   transcript: string,
   prior?: string
@@ -32,7 +59,8 @@ export async function extractIntent(
 titles (string[]), people (string[]), moods (string[]), genres (string[]), constraints (string[]),
 watchIntent (boolean), searchQuery (short embedding string), mediaType ("movie"|"tv"|"any"|null),
 minYear (number|null), maxYear (number|null), excludeGenres (string[]).
-watchIntent is true if they asked what to watch, listed enough entities, or clearly want a pick.`,
+watchIntent is true if they asked what to watch, listed enough entities, or clearly want a pick.
+genres must be TMDB genre names such as Comedy, Action, Drama — never movie, tv, film, or show (those belong in mediaType).`,
       },
       {
         role: "user",
@@ -48,7 +76,7 @@ watchIntent is true if they asked what to watch, listed enough entities, or clea
   try {
     const parsed = JSON.parse(raw) as Partial<ExtractedIntent>;
     const base = emptyIntent();
-    return {
+    return normalizeExtractedIntent({
       ...base,
       ...parsed,
       titles: parsed.titles ?? [],
@@ -62,7 +90,7 @@ watchIntent is true if they asked what to watch, listed enough entities, or clea
       mediaType: parsed.mediaType ?? null,
       minYear: parsed.minYear ?? null,
       maxYear: parsed.maxYear ?? null,
-    };
+    });
   } catch {
     const heuristic = /watch|movie|show|film|something|tonight|recommend/i.test(
       transcript

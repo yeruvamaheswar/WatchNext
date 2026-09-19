@@ -287,21 +287,31 @@ export async function recommend(input: RecommendInput): Promise<RecommendResult>
       ? input.extract.mediaType
       : null;
 
-  const { data, error } = await supabase.rpc("match_titles", {
-    query_embedding: blended,
-    match_count: 15,
-    filter_media_type: mediaType,
-    exclude_tmdb_ids: exclude,
-    include_genres:
-      input.extract?.genres && input.extract.genres.length
-        ? input.extract.genres
-        : null,
-    exclude_genres: parseExcludeGenres(input.extract).length
-      ? parseExcludeGenres(input.extract)
-      : null,
-    min_year: input.extract?.minYear ?? null,
-    max_year: input.extract?.maxYear ?? null,
-  });
+  const includeGenres =
+    input.extract?.genres && input.extract.genres.length
+      ? input.extract.genres
+      : null;
+  const excludeGenres = parseExcludeGenres(input.extract).length
+    ? parseExcludeGenres(input.extract)
+    : null;
+
+  async function search(include: string[] | null) {
+    return supabase.rpc("match_titles", {
+      query_embedding: blended,
+      match_count: 15,
+      filter_media_type: mediaType,
+      exclude_tmdb_ids: exclude,
+      include_genres: include,
+      exclude_genres: excludeGenres,
+      min_year: input.extract?.minYear ?? null,
+      max_year: input.extract?.maxYear ?? null,
+    });
+  }
+
+  let { data, error } = await search(includeGenres);
+  if (!error && includeGenres && !(data ?? []).length) {
+    ({ data, error } = await search(null));
+  }
 
   if (error) {
     throw new ConfigError(
