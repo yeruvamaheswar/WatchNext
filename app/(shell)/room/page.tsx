@@ -169,7 +169,7 @@ function GroupSessionView({
 
       <div className="flex w-full max-w-[13.5rem] items-center justify-between md:hidden">
         <span className="size-8" />
-        <VoiceOrb state={group.orb} size="xs" docked hideLabel />
+        <VoiceOrb state={group.orb} size="xs" docked />
         <ControlKey
           icon={<X />}
           label="End"
@@ -371,7 +371,7 @@ function RoomDock({
         ) : (
           <span className="size-8" />
         )}
-        <VoiceOrb state={orb} size="xs" docked hideLabel />
+        <VoiceOrb state={orb} size="xs" docked />
         <ControlKey
           icon={<X />}
           label="End"
