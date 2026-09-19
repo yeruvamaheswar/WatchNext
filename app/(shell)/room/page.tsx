@@ -32,9 +32,8 @@ export default function RoomPage() {
           <p className="text-xs tracking-[0.25em] text-violet-300 uppercase">Room</p>
           <h1 className="mt-1 text-3xl font-semibold">Voice room</h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            One device hears everyone nearby. This is a session — not background
-            recording. We transcribe after you pause, then suggest only when you
-            want a pick.
+            One device hears everyone nearby. This is a live session — captions
+            and replies stream while you talk, then we pick from the catalog.
           </p>
         </div>
         <HealthBanner />
@@ -48,6 +47,7 @@ export default function RoomPage() {
           type="button"
           className="h-14 rounded-full bg-violet-500 text-base text-white hover:bg-violet-400"
           onClick={() => void room.start()}
+          disabled={room.orb === "connecting"}
         >
           Start session
         </Button>
@@ -69,7 +69,9 @@ export default function RoomPage() {
       }}
     >
       <div className="flex items-center justify-between">
-        <p className="text-xs tracking-[0.25em] text-violet-300 uppercase">Room live</p>
+        <p className="text-xs tracking-[0.25em] text-violet-300 uppercase">
+          {room.orb === "connecting" ? "Room starting" : "Room live"}
+        </p>
         <Button
           type="button"
           variant="ghost"
@@ -82,9 +84,24 @@ export default function RoomPage() {
       </div>
       <div className="flex flex-1 flex-col items-center justify-center gap-6 py-6">
         <VoiceOrb state={room.orb} />
-        {room.captions && room.lastHeard ? (
-          <p className="max-w-sm text-center text-sm text-violet-100/80">
-            “{room.lastHeard}”
+        {room.captions ? (
+          <p className="min-h-10 max-w-sm text-center text-sm">
+            {room.liveHeard ? (
+              <span className="text-violet-100/70">
+                “{room.liveHeard}
+                <span className="ml-0.5 inline-block animate-pulse">▍</span>”
+              </span>
+            ) : room.lastHeard ? (
+              <span className="text-violet-100/80">“{room.lastHeard}”</span>
+            ) : room.status ? (
+              <span className="text-violet-200/55">{room.status}</span>
+            ) : room.orb === "connecting" ? (
+              <span className="text-violet-200/55">Opening the live session…</span>
+            ) : room.orb === "thinking" ? (
+              <span className="text-violet-200/45">Finding a pick…</span>
+            ) : room.orb === "listening" ? (
+              <span className="text-violet-200/45">Listening…</span>
+            ) : null}
           </p>
         ) : null}
         {room.result ? (
@@ -106,6 +123,7 @@ export default function RoomPage() {
             variant="outline"
             className="h-12 rounded-full"
             onClick={() => room.setMuted(!room.muted)}
+            disabled={room.orb === "connecting"}
           >
             <MicOff className="size-4" />
             {room.muted ? "Unmute" : "Mute"}
@@ -115,7 +133,7 @@ export default function RoomPage() {
           type="button"
           className="h-12 rounded-full bg-violet-500 text-white hover:bg-violet-400"
           onClick={() => void room.suggest()}
-          disabled={room.busy}
+          disabled={room.busy || room.orb === "connecting"}
         >
           <Sparkles className="size-4" />
           Suggest

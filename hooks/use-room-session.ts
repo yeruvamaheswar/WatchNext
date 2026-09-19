@@ -2,11 +2,13 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { heuristicIntent } from "@/lib/intent-heuristic";
 import { getUserMediaFn, microphoneBlockReason } from "@/lib/microphone";
-import { floatToWav } from "@/lib/wav";
+import { RECOMMEND_TOOL_NAME } from "@/lib/realtime-constants";
+import { connectRealtime, type RealtimeEvent, type RealtimeHandle } from "@/lib/realtime-webrtc";
 import type { ExtractedIntent, GuestLike, RecommendResult } from "@/lib/types";
 
-export type OrbState = "idle" | "listening" | "thinking" | "speaking";
+export type OrbState = "idle" | "connecting" | "listening" | "thinking" | "speaking";
 
 type Options = {
   userId: string;
@@ -15,8 +17,14 @@ type Options = {
   onActiveChange?: (active: boolean) => void;
 };
 
-const WATCH_HINT =
-  /\b(watch|movie|show|film|series|recommend|suggest|tonight|something)\b/i;
+type RecommendToolArgs = {
+  queryText?: string;
+  mediaType?: "movie" | "tv" | "any";
+  genres?: string[];
+  moods?: string[];
+  people?: string[];
+  titles?: string[];
+};
 
 export function useRoomSession({ userId, likes, likedVibes, onActiveChange }: Options) {
   const [active, setActive] = useState(false);
@@ -25,87 +33,310 @@ export function useRoomSession({ userId, likes, likedVibes, onActiveChange }: Op
   const [captions, setCaptions] = useState(true);
   const [transcript, setTranscript] = useState<string[]>([]);
   const [lastHeard, setLastHeard] = useState("");
+  const [liveHeard, setLiveHeard] = useState("");
   const [extract, setExtract] = useState<ExtractedIntent | null>(null);
   const [result, setResult] = useState<RecommendResult | null>(null);
   const [busy, setBusy] = useState(false);
   const [micEnabled, setMicEnabled] = useState(false);
   const [micHint, setMicHint] = useState<string | null>(null);
+  const [status, setStatus] = useState<string | null>(null);
 
   useEffect(() => {
     setMicHint(microphoneBlockReason());
   }, []);
 
   const streamRef = useRef<MediaStream | null>(null);
-  const audioCtxRef = useRef<AudioContext | null>(null);
-  const processorRef = useRef<ScriptProcessorNode | null>(null);
-  const speakingRef = useRef(false);
-  const mutedRef = useRef(false);
-  const chunksRef = useRef<Float32Array[]>([]);
-  const lastVoiceRef = useRef(0);
-  const speechStartedRef = useRef(0);
-  const suggestedIdsRef = useRef<number[]>([]);
+  const handleRef = useRef<RealtimeHandle | null>(null);
   const audioElRef = useRef<HTMLAudioElement | null>(null);
   const activeRef = useRef(false);
-  const transcriptRef = useRef<string[]>([]);
+  const suggestedIdsRef = useRef<number[]>([]);
+  const liveBufferRef = useRef("");
+  const likesRef = useRef(likes);
+  const vibesRef = useRef(likedVibes);
+  const userIdRef = useRef(userId);
+  const startGenRef = useRef(0);
+  const secretRef = useRef<{ value: string; expiresAt: number } | null>(null);
 
   useEffect(() => {
-    mutedRef.current = muted;
-  }, [muted]);
-  useEffect(() => {
-    transcriptRef.current = transcript;
-  }, [transcript]);
+    likesRef.current = likes;
+    vibesRef.current = likedVibes;
+    userIdRef.current = userId;
+  }, [likedVibes, likes, userId]);
 
-  const unlockAudio = useCallback(async () => {
-    const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-    const ctx = audioCtxRef.current ?? new Ctx();
-    audioCtxRef.current = ctx;
-    if (ctx.state === "suspended") await ctx.resume();
-    const buffer = ctx.createBuffer(1, 1, 22050);
-    const src = ctx.createBufferSource();
-    src.buffer = buffer;
-    src.connect(ctx.destination);
-    src.start(0);
-    if (!audioElRef.current) {
-      audioElRef.current = new Audio();
-    }
-  }, []);
+  const beginSession = useCallback(
+    (withMic: boolean, nextOrb: OrbState = withMic ? "listening" : "idle") => {
+      activeRef.current = true;
+      setActive(true);
+      setMicEnabled(withMic);
+      setOrb(nextOrb);
+      onActiveChange?.(true);
+    },
+    [onActiveChange]
+  );
 
-  const stopCapture = useCallback(() => {
-    processorRef.current?.disconnect();
-    processorRef.current = null;
-    streamRef.current?.getTracks().forEach((t) => t.stop());
-    streamRef.current = null;
-    speakingRef.current = false;
-    chunksRef.current = [];
-  }, []);
-
-  const playTts = useCallback(async (text: string) => {
-    setOrb("speaking");
-    const res = await fetch("/api/tts", {
+  const fetchSessionSecret = useCallback(async () => {
+    const res = await fetch("/api/realtime/session", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text }),
+      body: JSON.stringify({ userId: userIdRef.current }),
     });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.error || "TTS failed.");
+    const json = await res.json();
+    if (!res.ok || !json.value) {
+      throw new Error(json.error || "Could not start a Realtime session.");
     }
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-    const audio = new Audio(url);
-    audioElRef.current = audio;
-    await audio.play().catch(() => {});
-    await new Promise<void>((resolve) => {
-      audio.onended = () => resolve();
-      audio.onerror = () => resolve();
-    });
-    URL.revokeObjectURL(url);
+    const secret = {
+      value: String(json.value),
+      expiresAt: Number(json.expiresAt) || Date.now() / 1000 + 600,
+    };
+    secretRef.current = secret;
+    return secret;
   }, []);
 
-  const runSuggest = useCallback(
-    async (forcedExtract?: ExtractedIntent | null, queryText?: string) => {
-      setBusy(true);
+  const takeSessionSecret = useCallback(async () => {
+    const cached = secretRef.current;
+    if (cached && cached.expiresAt * 1000 > Date.now() + 20_000) {
+      return cached;
+    }
+    return fetchSessionSecret();
+  }, [fetchSessionSecret]);
+
+  const stopCapture = useCallback(() => {
+    handleRef.current?.close();
+    handleRef.current = null;
+    streamRef.current?.getTracks().forEach((track) => track.stop());
+    streamRef.current = null;
+    liveBufferRef.current = "";
+    setLiveHeard("");
+  }, []);
+
+  const sendUserText = useCallback((text: string) => {
+    const handle = handleRef.current;
+    if (!handle) return false;
+    handle.send({
+      type: "conversation.item.create",
+      item: {
+        type: "message",
+        role: "user",
+        content: [{ type: "input_text", text }],
+      },
+    });
+    handle.send({ type: "response.create" });
+    return true;
+  }, []);
+
+  const runRecommendTool = useCallback(async (rawArgs: string, callId: string) => {
+    setBusy(true);
+    setOrb("thinking");
+    let parsed: RecommendToolArgs = {};
+    try {
+      parsed = JSON.parse(rawArgs) as RecommendToolArgs;
+    } catch {
+      parsed = {};
+    }
+    const queryText = parsed.queryText?.trim() || liveBufferRef.current || lastHeard || "just pick something";
+    const intent = heuristicIntent(queryText);
+    if (parsed.genres?.length) intent.genres = parsed.genres;
+    if (parsed.moods?.length) intent.moods = parsed.moods;
+    if (parsed.people?.length) intent.people = parsed.people;
+    if (parsed.titles?.length) intent.titles = parsed.titles;
+    if (parsed.mediaType) intent.mediaType = parsed.mediaType;
+    intent.watchIntent = true;
+    intent.searchQuery = queryText;
+    setExtract(intent);
+
+    try {
+      const rec = await fetch("/api/recommend", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: userIdRef.current,
+          likes: likesRef.current,
+          likedVibes: vibesRef.current,
+          extract: intent,
+          queryText,
+          sessionExcludeIds: suggestedIdsRef.current,
+        }),
+      });
+      const data = await rec.json();
+      if (!rec.ok) throw new Error(data.error || "Recommend failed.");
+      const next = data as RecommendResult;
+      setResult(next);
+      suggestedIdsRef.current = [
+        ...suggestedIdsRef.current,
+        ...next.titles.map((title) => title.tmdbId),
+      ];
+      handleRef.current?.send({
+        type: "conversation.item.create",
+        item: {
+          type: "function_call_output",
+          call_id: callId,
+          output: JSON.stringify({
+            spokenPitch: next.spokenPitch,
+            titles: next.titles.map((title) => ({
+              name: title.name,
+              year: title.year,
+              reason: title.reason,
+            })),
+          }),
+        },
+      });
+      handleRef.current?.send({ type: "response.create" });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Could not suggest.";
+      toast.error(message);
+      handleRef.current?.send({
+        type: "conversation.item.create",
+        item: {
+          type: "function_call_output",
+          call_id: callId,
+          output: JSON.stringify({ error: message }),
+        },
+      });
+      handleRef.current?.send({ type: "response.create" });
+      setBusy(false);
+      setOrb(activeRef.current ? "listening" : "idle");
+    }
+  }, [lastHeard]);
+
+  const onRealtimeEvent = useCallback(
+    (event: RealtimeEvent) => {
+      switch (event.type) {
+        case "input_audio_buffer.speech_started":
+          liveBufferRef.current = "";
+          setLiveHeard("");
+          setOrb("listening");
+          break;
+        case "response.created":
+          setOrb("thinking");
+          break;
+        case "conversation.item.input_audio_transcription.delta": {
+          const delta = typeof event.delta === "string" ? event.delta : "";
+          if (!delta) break;
+          liveBufferRef.current += delta;
+          setLiveHeard(liveBufferRef.current.trim());
+          break;
+        }
+        case "conversation.item.input_audio_transcription.completed": {
+          const text = String(event.transcript ?? "").trim();
+          liveBufferRef.current = "";
+          setLiveHeard("");
+          if (!text) break;
+          setLastHeard(text);
+          setTranscript((prev) => [...prev, text].slice(-24));
+          break;
+        }
+        case "response.function_call_arguments.done":
+          if (event.name === RECOMMEND_TOOL_NAME && typeof event.call_id === "string") {
+            void runRecommendTool(String(event.arguments ?? "{}"), event.call_id);
+          }
+          break;
+        case "response.output_audio_transcript.delta":
+        case "response.output_audio.delta":
+          setOrb("speaking");
+          break;
+        case "response.done":
+          setBusy(false);
+          if (activeRef.current) setOrb("listening");
+          break;
+        case "error": {
+          const detail = event.error as { message?: string; code?: string } | undefined;
+          const code = detail?.code ?? "";
+          if (code.includes("cancel") || code === "response_cancel") break;
+          if (detail?.message) toast.error(detail.message);
+          break;
+        }
+        default:
+          break;
+      }
+    },
+    [runRecommendTool]
+  );
+
+  const start = useCallback(async () => {
+    const gen = ++startGenRef.current;
+    setStatus("Opening microphone…");
+    beginSession(true, "connecting");
+
+    try {
+      const getUserMedia = getUserMediaFn();
+      if (!getUserMedia) {
+        const reason = microphoneBlockReason();
+        toast.error(reason ?? "Microphone is not available in this browser.");
+        setStatus(null);
+        beginSession(false);
+        return;
+      }
+
+      const [stream, secret] = await Promise.all([
+        getUserMedia({
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            channelCount: 1,
+          },
+        }),
+        takeSessionSecret(),
+      ]);
+      if (gen !== startGenRef.current) {
+        stream.getTracks().forEach((track) => track.stop());
+        return;
+      }
+
+      streamRef.current = stream;
+      setStatus("Connecting…");
+
+      const audio = audioElRef.current ?? new Audio();
+      audioElRef.current = audio;
+      handleRef.current = await connectRealtime({
+        clientSecret: secret.value,
+        stream,
+        audioEl: audio,
+        onEvent: onRealtimeEvent,
+      });
+      if (gen !== startGenRef.current) {
+        stopCapture();
+        return;
+      }
+      handleRef.current.setMuted(false);
+      setMicEnabled(true);
+      setOrb("listening");
+      setStatus(null);
+    } catch (err) {
+      if (gen !== startGenRef.current) return;
+      stopCapture();
+      const blocked = microphoneBlockReason();
+      toast.error(
+        blocked ??
+          (err instanceof Error ? err.message : "Could not start a live Room session.")
+      );
+      setStatus(null);
+      beginSession(false);
+    }
+  }, [beginSession, onRealtimeEvent, stopCapture, takeSessionSecret]);
+
+  const stop = useCallback(() => {
+    startGenRef.current += 1;
+    activeRef.current = false;
+    stopCapture();
+    setActive(false);
+    setMicEnabled(false);
+    setMuted(false);
+    setStatus(null);
+    setOrb("idle");
+    onActiveChange?.(false);
+  }, [onActiveChange, stopCapture]);
+
+  const submitText = useCallback(
+    async (raw: string) => {
+      const text = raw.trim();
+      if (!text) return;
+      setLastHeard(text);
+      setTranscript((prev) => [...prev, text].slice(-24));
       setOrb("thinking");
+      if (sendUserText(text)) return;
+      const intent = heuristicIntent(text);
+      setExtract(intent);
+      setBusy(true);
       try {
         const rec = await fetch("/api/recommend", {
           method: "POST",
@@ -114,25 +345,19 @@ export function useRoomSession({ userId, likes, likedVibes, onActiveChange }: Op
             userId,
             likes,
             likedVibes,
-            extract: forcedExtract ?? extract,
-            queryText:
-              queryText ||
-              transcriptRef.current.slice(-6).join(" ") ||
-              "just pick something",
+            extract: intent,
+            queryText: text,
             sessionExcludeIds: suggestedIdsRef.current,
           }),
         });
         const data = await rec.json();
-        if (!rec.ok) {
-          throw new Error(data.error || "Recommend failed.");
-        }
+        if (!rec.ok) throw new Error(data.error || "Recommend failed.");
         const next = data as RecommendResult;
         setResult(next);
         suggestedIdsRef.current = [
           ...suggestedIdsRef.current,
-          ...next.titles.map((t) => t.tmdbId),
+          ...next.titles.map((title) => title.tmdbId),
         ];
-        await playTts(next.spokenPitch);
       } catch (err) {
         toast.error(err instanceof Error ? err.message : "Could not suggest.");
       } finally {
@@ -140,182 +365,22 @@ export function useRoomSession({ userId, likes, likedVibes, onActiveChange }: Op
         setOrb(activeRef.current ? "listening" : "idle");
       }
     },
-    [extract, likedVibes, likes, playTts, userId]
+    [likedVibes, likes, sendUserText, userId]
   );
 
-  const processText = useCallback(
-    async (text: string) => {
-      setLastHeard(text);
-      setTranscript((prev) => [...prev, text].slice(-24));
+  const suggest = useCallback(() => {
+    setOrb("thinking");
+    if (sendUserText("Suggest something to watch now based on what we said.")) return;
+    void submitText(lastHeard || "just pick something");
+  }, [lastHeard, sendUserText, submitText]);
 
-      const prior = transcriptRef.current.join(" ");
-      const extracted = await fetch("/api/extract", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ transcript: text, prior }),
-      });
-      const extractedJson = await extracted.json();
-      if (!extracted.ok) {
-        toast.error(extractedJson.error || "Extract failed.");
-        setOrb(activeRef.current && streamRef.current ? "listening" : "idle");
-        return;
-      }
-      const intent = extractedJson.extract as ExtractedIntent;
-      setExtract(intent);
+  useEffect(() => {
+    handleRef.current?.setMuted(muted);
+  }, [muted]);
 
-      const entityCount =
-        intent.titles.length +
-        intent.people.length +
-        intent.genres.length +
-        intent.moods.length;
-      const shouldSuggest =
-        intent.watchIntent || entityCount >= 2 || WATCH_HINT.test(text);
-      if (shouldSuggest) {
-        await runSuggest(intent, intent.searchQuery || text);
-      } else {
-        setOrb(activeRef.current && streamRef.current ? "listening" : "idle");
-      }
-    },
-    [runSuggest]
-  );
-
-  const handleUtterance = useCallback(
-    async (wav: Blob) => {
-      setOrb("thinking");
-      const form = new FormData();
-      form.set("file", wav, "utterance.wav");
-      const stt = await fetch("/api/transcribe", { method: "POST", body: form });
-      const sttJson = await stt.json();
-      if (!stt.ok) {
-        toast.error(sttJson.error || "Transcription failed.");
-        setOrb("listening");
-        return;
-      }
-      const text = String(sttJson.text ?? "").trim();
-      if (!text) {
-        setOrb("listening");
-        return;
-      }
-      await processText(text);
-    },
-    [processText]
-  );
-
-  const submitText = useCallback(
-    async (raw: string) => {
-      const text = raw.trim();
-      if (!text) return;
-      setOrb("thinking");
-      await processText(text);
-    },
-    [processText]
-  );
-
-  const beginSession = useCallback(
-    (withMic: boolean) => {
-      activeRef.current = true;
-      setActive(true);
-      setMicEnabled(withMic);
-      setOrb(withMic ? "listening" : "idle");
-      onActiveChange?.(true);
-    },
-    [onActiveChange]
-  );
-
-  const start = useCallback(async () => {
-    try {
-      await unlockAudio();
-      const getUserMedia = getUserMediaFn();
-      if (!getUserMedia) {
-        const reason = microphoneBlockReason();
-        toast.error(reason ?? "Microphone is not available in this browser.");
-        beginSession(false);
-        return;
-      }
-      const stream = await getUserMedia({
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          channelCount: 1,
-        },
-      });
-      streamRef.current = stream;
-      const ctx = audioCtxRef.current!;
-      const source = ctx.createMediaStreamSource(stream);
-      const analyser = ctx.createAnalyser();
-      analyser.fftSize = 2048;
-      const processor = ctx.createScriptProcessor(4096, 1, 1);
-      processorRef.current = processor;
-      const silenceMs = 900;
-      const speechThreshold = 0.018;
-      const silenceThreshold = 0.012;
-
-      processor.onaudioprocess = (event) => {
-        if (!activeRef.current || mutedRef.current) return;
-        const input = event.inputBuffer.getChannelData(0);
-        let sum = 0;
-        for (let i = 0; i < input.length; i++) sum += input[i] * input[i];
-        const rms = Math.sqrt(sum / input.length);
-        const now = performance.now();
-        if (rms > speechThreshold) {
-          if (!speakingRef.current) {
-            speakingRef.current = true;
-            speechStartedRef.current = now;
-            chunksRef.current = [];
-            setOrb("listening");
-          }
-          lastVoiceRef.current = now;
-          chunksRef.current.push(new Float32Array(input));
-        } else if (speakingRef.current) {
-          chunksRef.current.push(new Float32Array(input));
-          if (now - lastVoiceRef.current > silenceMs) {
-            speakingRef.current = false;
-            const duration = now - speechStartedRef.current;
-            const frames = chunksRef.current;
-            chunksRef.current = [];
-            if (duration > 400 && frames.length) {
-              const length = frames.reduce((n, f) => n + f.length, 0);
-              const merged = new Float32Array(length);
-              let offset = 0;
-              for (const f of frames) {
-                merged.set(f, offset);
-                offset += f.length;
-              }
-              const wav = floatToWav(merged, ctx.sampleRate);
-              void handleUtterance(wav);
-            }
-          }
-        } else if (rms > silenceThreshold) {
-          lastVoiceRef.current = now;
-        }
-      };
-
-      const mute = ctx.createGain();
-      mute.gain.value = 0;
-      source.connect(analyser);
-      analyser.connect(processor);
-      processor.connect(mute);
-      mute.connect(ctx.destination);
-      beginSession(true);
-    } catch (err) {
-      const blocked = microphoneBlockReason();
-      toast.error(
-        blocked ??
-          (err instanceof Error ? err.message : "Microphone permission is required for Room.")
-      );
-      beginSession(false);
-    }
-  }, [beginSession, handleUtterance, unlockAudio]);
-
-  const stop = useCallback(() => {
-    activeRef.current = false;
-    stopCapture();
-    audioElRef.current?.pause();
-    setActive(false);
-    setMicEnabled(false);
-    setOrb("idle");
-    onActiveChange?.(false);
-  }, [onActiveChange, stopCapture]);
+  useEffect(() => {
+    void fetchSessionSecret().catch(() => {});
+  }, [fetchSessionSecret]);
 
   useEffect(() => {
     return () => {
@@ -333,14 +398,16 @@ export function useRoomSession({ userId, likes, likedVibes, onActiveChange }: Op
     setCaptions,
     transcript,
     lastHeard,
+    liveHeard,
     extract,
     result,
     busy,
     micEnabled,
     micHint,
+    status,
     start,
     stop,
     submitText,
-    suggest: () => runSuggest(extract),
+    suggest,
   };
 }

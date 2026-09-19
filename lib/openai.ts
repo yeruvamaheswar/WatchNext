@@ -18,5 +18,7 @@ export function openaiModels() {
     transcribe: env.transcribeModel,
     tts: env.ttsModel,
     voice: env.ttsVoice,
+    realtime: env.realtimeModel,
+    realtimeVoice: env.realtimeVoice,
   };
 }

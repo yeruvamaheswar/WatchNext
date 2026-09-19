@@ -1,46 +1,16 @@
 import { getOpenAI, openaiModels } from "@/lib/openai";
+import {
+  emptyIntent,
+  heuristicIntent,
+  normalizeExtractedIntent,
+} from "@/lib/intent-heuristic";
 import type { ExtractedIntent } from "@/lib/types";
 
-const emptyIntent = (): ExtractedIntent => ({
-  titles: [],
-  people: [],
-  moods: [],
-  genres: [],
-  constraints: [],
-  watchIntent: false,
-  searchQuery: "",
-  mediaType: null,
-  minYear: null,
-  maxYear: null,
-  excludeGenres: [],
-});
-
-const MEDIA_TOKENS: Record<string, "movie" | "tv"> = {
-  movie: "movie",
-  movies: "movie",
-  film: "movie",
-  films: "movie",
-  tv: "tv",
-  show: "tv",
-  shows: "tv",
-  series: "tv",
-};
-
-/** Move movie/tv tokens out of genres so match_titles include_genres still hits TMDB names. */
-export function normalizeExtractedIntent(intent: ExtractedIntent): ExtractedIntent {
-  let mediaType = intent.mediaType;
-  const genres: string[] = [];
-  for (const raw of intent.genres ?? []) {
-    const key = raw.trim().toLowerCase();
-    const mapped = MEDIA_TOKENS[key];
-    if (mapped) {
-      if (!mediaType || mediaType === "any") mediaType = mapped;
-      continue;
-    }
-    if (raw.trim()) genres.push(raw);
-  }
-  return { ...intent, genres, mediaType };
-}
+export {
+  heuristicIntent,
+  normalizeExtractedIntent,
+  shouldAutoSuggest,
+} from "@/lib/intent-heuristic";
 
 export async function extractIntent(
   transcript: string,
@@ -92,13 +62,6 @@ genres must be TMDB genre names such as Comedy, Action, Drama — never movie, t
       maxYear: parsed.maxYear ?? null,
     });
   } catch {
-    const heuristic = /watch|movie|show|film|something|tonight|recommend/i.test(
-      transcript
-    );
-    return {
-      ...emptyIntent(),
-      watchIntent: heuristic,
-      searchQuery: transcript,
-    };
+    return heuristicIntent(transcript);
   }
 }

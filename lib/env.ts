@@ -127,6 +127,12 @@ export function getServerEnv() {
       "gpt-4o-transcribe",
     ttsModel: firstNonEmpty(readProcessEnv("OPENAI_TTS_MODEL"), fileEnv.OPENAI_TTS_MODEL) || "tts-1",
     ttsVoice: firstNonEmpty(readProcessEnv("OPENAI_TTS_VOICE"), fileEnv.OPENAI_TTS_VOICE) || "nova",
+    realtimeModel:
+      firstNonEmpty(readProcessEnv("OPENAI_REALTIME_MODEL"), fileEnv.OPENAI_REALTIME_MODEL) ||
+      "gpt-realtime",
+    realtimeVoice:
+      firstNonEmpty(readProcessEnv("OPENAI_REALTIME_VOICE"), fileEnv.OPENAI_REALTIME_VOICE) ||
+      "marin",
     ingestPages:
       Number(firstNonEmpty(readProcessEnv("TMDB_INGEST_PAGES"), fileEnv.TMDB_INGEST_PAGES) || 10) ||
       10,
