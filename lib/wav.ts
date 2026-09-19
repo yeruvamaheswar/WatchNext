@@ -1,3 +1,31 @@
+const TRANSCRIBE_RATE = 16000;
+
+export function downsample(samples: Float32Array, fromRate: number, toRate: number) {
+  if (toRate >= fromRate) return samples;
+  const ratio = fromRate / toRate;
+  const next = new Float32Array(Math.max(1, Math.round(samples.length / ratio)));
+  for (let i = 0; i < next.length; i++) {
+    const start = Math.floor(i * ratio);
+    const end = Math.min(samples.length, Math.floor((i + 1) * ratio));
+    let sum = 0;
+    for (let j = start; j < end; j++) sum += samples[j];
+    next[i] = sum / Math.max(1, end - start);
+  }
+  return next;
+}
+
+export function framesToWav(frames: Float32Array[], sampleRate: number) {
+  const length = frames.reduce((n, frame) => n + frame.length, 0);
+  const merged = new Float32Array(length);
+  let offset = 0;
+  for (const frame of frames) {
+    merged.set(frame, offset);
+    offset += frame.length;
+  }
+  const pcm = downsample(merged, sampleRate, TRANSCRIBE_RATE);
+  return floatToWav(pcm, Math.min(sampleRate, TRANSCRIBE_RATE));
+}
+
 export function floatToWav(samples: Float32Array, sampleRate: number) {
   const buffer = new ArrayBuffer(44 + samples.length * 2);
   const view = new DataView(buffer);
