@@ -40,9 +40,6 @@ export default function AccountPage() {
           Account
         </p>
         <h1 className="mt-1 text-3xl font-semibold">Settings</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          No billing. Guest demo works without email. Auth is optional.
-        </p>
       </div>
       {!supabaseConfigured ? (
         <p className="rounded-2xl border border-white/10 p-4 text-sm text-muted-foreground">

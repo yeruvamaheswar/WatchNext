@@ -45,21 +45,14 @@ export default function RoomPage() {
     return (
       <main className="mx-auto flex h-full max-w-xl flex-col overflow-hidden px-6 py-6 md:px-8">
         <div className="shrink-0 space-y-3">
-          <div>
-            <p className="text-[11px] font-medium tracking-[0.16em] text-violet-300 uppercase">
-              Room
-            </p>
-            <h1 className="mt-1 text-3xl font-semibold">Voice room</h1>
-            <p className="mt-2 max-w-md text-sm text-muted-foreground">
-              {groupMode
-                ? "Group mode listens on this phone, labels Person 1 / 2 / 3, then suggests what to watch together."
-                : "Type a search, or start a session so one device can hear everyone nearby."}
-            </p>
+          <div className="flex items-center justify-between gap-4">
+            <h1 className="text-3xl font-semibold">Room</h1>
+            <GroupModeToggle checked={groupMode} onChange={setGroupMode} />
           </div>
           <HealthBanner />
           {micHint ? (
             <div className="border border-amber-500/30 bg-amber-950/40 px-4 py-2.5 text-xs text-amber-100">
-              {micHint} Text search works without the microphone.
+              {micHint}
             </div>
           ) : null}
         </div>
@@ -95,19 +88,8 @@ export default function RoomPage() {
                   : room.orb === "connecting"
               }
             >
-              {groupMode ? "Start group listen" : "Start session"}
+              Start session
             </button>
-            <GroupModeToggle
-              checked={groupMode}
-              onChange={setGroupMode}
-            />
-            <p className="text-center text-xs text-muted-foreground">
-              {groupMode
-                ? "Suggests after ~6s of silence, or tap Suggest. Mic needs HTTPS or localhost."
-                : room.micHint
-                  ? "Mic access needs HTTPS or localhost. Search by text anytime."
-                  : "The mic turns on only after you start a session."}
-            </p>
           </div>
         </div>
       </main>
@@ -115,7 +97,7 @@ export default function RoomPage() {
   }
 
   if (groupMode && group.active) {
-    return <GroupSessionView group={group} groupModeLocked />;
+    return <GroupSessionView group={group} />;
   }
 
   return <LiveSessionView room={room} />;
@@ -124,59 +106,47 @@ export default function RoomPage() {
 function GroupModeToggle({
   checked,
   onChange,
-  disabled,
 }: {
   checked: boolean;
   onChange: (next: boolean) => void;
-  disabled?: boolean;
 }) {
   return (
-    <label
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label="Group mode"
+      onClick={() => onChange(!checked)}
       className={cn(
-        "flex w-full max-w-xs cursor-pointer items-center justify-between gap-3 rounded-[8px] border border-violet-500/25 bg-white/5 px-3 py-2 text-left",
-        disabled && "pointer-events-none opacity-50"
+        "inline-flex items-center gap-1.5 text-[11px] transition-colors",
+        checked
+          ? "text-violet-100"
+          : "text-violet-200/45 hover:text-violet-100/80"
       )}
     >
-      <span className="flex min-w-0 items-center gap-2">
-        <Users className="size-3.5 shrink-0 text-violet-300" />
-        <span className="min-w-0">
-          <span className="block text-xs font-medium text-violet-100">
-            Group mode
-          </span>
-          <span className="block text-[11px] text-muted-foreground">
-            Listen, then suggest for everyone
-          </span>
-        </span>
-      </span>
-      <button
-        type="button"
-        role="switch"
-        aria-checked={checked}
-        aria-label="Group mode"
-        disabled={disabled}
-        onClick={() => onChange(!checked)}
+      <Users className="size-3" />
+      Group
+      <span
         className={cn(
-          "relative h-6 w-10 shrink-0 rounded-full transition-colors",
+          "relative h-3.5 w-6 rounded-full transition-colors",
           checked ? "bg-violet-500" : "bg-white/15"
         )}
       >
         <span
           className={cn(
-            "absolute top-0.5 left-0.5 size-5 rounded-full bg-white transition-transform",
-            checked && "translate-x-4"
+            "absolute top-0.5 left-0.5 size-2.5 rounded-full bg-white transition-transform",
+            checked && "translate-x-2.5"
           )}
         />
-      </button>
-    </label>
+      </span>
+    </button>
   );
 }
 
 function GroupSessionView({
   group,
-  groupModeLocked,
 }: {
   group: ReturnType<typeof useGroupListen>;
-  groupModeLocked: boolean;
 }) {
   const hasResults = Boolean(group.result?.titles.length);
   const dock = (
@@ -190,16 +160,16 @@ function GroupSessionView({
         <p className="line-clamp-1 max-w-sm text-center text-xs text-violet-100/75 md:line-clamp-2 md:min-h-10 md:text-sm">
           {group.status ||
             (group.orb === "thinking"
-              ? "Finding a group pick…"
+              ? "Finding a pick…"
               : group.orb === "listening"
-                ? "Listening to the group…"
+                ? "Listening…"
                 : null)}
         </p>
       </div>
 
       <div className="flex w-full max-w-[13.5rem] items-center justify-between md:hidden">
         <span className="size-8" />
-        <VoiceOrb state={group.orb} size="xs" docked hideLabel />
+        <VoiceOrb state={group.orb} size="xs" docked />
         <ControlKey
           icon={<X />}
           label="End"
@@ -217,9 +187,9 @@ function GroupSessionView({
         <p className="line-clamp-2 min-h-8 max-w-sm text-center text-sm text-violet-200/70 md:min-h-10">
           {group.status ||
             (group.orb === "thinking"
-              ? "Finding a group pick…"
+              ? "Finding a pick…"
               : group.orb === "listening"
-                ? "Listening to the group…"
+                ? "Listening…"
                 : null)}
         </p>
         {hasResults && group.result?.spokenPitch ? (
@@ -241,8 +211,6 @@ function GroupSessionView({
           <ControlKey icon={<X />} label="End" danger onClick={group.stop} />
         </div>
       </div>
-
-      <GroupModeToggle checked onChange={() => {}} disabled={groupModeLocked} />
 
       {group.segments.length > 0 ? (
         <div className="mt-1 max-h-28 w-full overflow-y-auto rounded-lg border border-violet-500/20 bg-black/30 px-3 py-2 text-left text-[11px] text-violet-100/75">
@@ -403,7 +371,7 @@ function RoomDock({
         ) : (
           <span className="size-8" />
         )}
-        <VoiceOrb state={orb} size="xs" docked hideLabel />
+        <VoiceOrb state={orb} size="xs" docked />
         <ControlKey
           icon={<X />}
           label="End"

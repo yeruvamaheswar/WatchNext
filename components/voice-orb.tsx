@@ -123,12 +123,10 @@ export function VoiceOrb({
   state,
   size = "md",
   docked = false,
-  hideLabel = false,
 }: {
   state: OrbState;
   size?: OrbSize;
   docked?: boolean;
-  hideLabel?: boolean;
 }) {
   const status =
     state === "connecting"
@@ -140,19 +138,11 @@ export function VoiceOrb({
           : state === "speaking"
             ? "Speaking"
             : "Ready";
-  const a11yLabel = `Cue, ${status}`;
   const box = SIZE[size];
   const { gaze, blink } = useRandomGaze(state);
 
   return (
-    <div
-      role="img"
-      aria-label={a11yLabel}
-      className={cn(
-        "flex flex-col items-center",
-        hideLabel ? "gap-0" : "gap-1.5 md:gap-3"
-      )}
-    >
+    <div role="img" aria-label={status} className="grid place-items-center">
       <style>{ORB_FACE_CSS}</style>
       <div
         className={cn(
@@ -204,13 +194,6 @@ export function VoiceOrb({
           </div>
         </div>
       </div>
-      {hideLabel ? (
-        <span className="sr-only">{a11yLabel}</span>
-      ) : (
-        <p className="text-[10px] font-medium tracking-[0.16em] text-violet-200/80 uppercase md:text-[11px]">
-          Cue
-        </p>
-      )}
     </div>
   );
 }
