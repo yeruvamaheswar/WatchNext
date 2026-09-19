@@ -8,22 +8,25 @@ type OrbSize = "xs" | "sm" | "md";
 
 const SIZE = {
   xs: {
+    haze: "size-20",
     glow: "size-14",
     ring: "size-16",
     orb: "size-11",
-    shadow: "shadow-[0_0_18px_rgba(124,58,237,0.45)]",
+    shadow: "shadow-[0_0_22px_rgba(124,58,237,0.55)]",
   },
   sm: {
+    haze: "size-28",
     glow: "size-20",
     ring: "size-[5.25rem]",
     orb: "size-16",
-    shadow: "shadow-[0_0_28px_rgba(124,58,237,0.5)]",
+    shadow: "shadow-[0_0_34px_rgba(124,58,237,0.58)]",
   },
   md: {
+    haze: "size-52",
     glow: "size-40",
     ring: "size-[9.5rem]",
     orb: "size-32",
-    shadow: "shadow-[0_0_56px_rgba(124,58,237,0.5)]",
+    shadow: "shadow-[0_0_64px_rgba(124,58,237,0.58)]",
   },
 } as const;
 
@@ -123,10 +126,14 @@ export function VoiceOrb({
   state,
   size = "md",
   docked = false,
+  onClick,
+  disabled = false,
 }: {
   state: OrbState;
   size?: OrbSize;
   docked?: boolean;
+  onClick?: () => void;
+  disabled?: boolean;
 }) {
   const status =
     state === "connecting"
@@ -138,11 +145,13 @@ export function VoiceOrb({
           : state === "speaking"
             ? "Speaking"
             : "Ready";
+  const clickable = Boolean(onClick);
+  const actionLabel = state === "connecting" ? "Starting session" : "Start session";
   const box = SIZE[size];
   const { gaze, blink } = useRandomGaze(state);
 
-  return (
-    <div role="img" aria-label={status} className="grid place-items-center">
+  const visual = (
+    <>
       <style>{ORB_FACE_CSS}</style>
       <div
         className={cn(
@@ -153,7 +162,14 @@ export function VoiceOrb({
       >
         <div
           className={cn(
-            "absolute rounded-full bg-violet-600/30 transition-opacity duration-300",
+            "pointer-events-none absolute rounded-full bg-violet-500/25",
+            size === "xs" ? "blur-lg" : "blur-3xl",
+            box.haze
+          )}
+        />
+        <div
+          className={cn(
+            "pointer-events-none absolute rounded-full bg-violet-600/40 transition-opacity duration-300",
             size === "xs" ? "blur-md" : "blur-2xl",
             box.glow,
             state === "connecting" && "animate-pulse",
@@ -164,7 +180,7 @@ export function VoiceOrb({
         {state === "connecting" ? (
           <div
             className={cn(
-              "absolute animate-spin rounded-full border-2 border-violet-200/20 border-t-violet-100",
+              "pointer-events-none absolute animate-spin rounded-full border-2 border-violet-200/20 border-t-violet-100",
               box.ring
             )}
           />
@@ -194,6 +210,35 @@ export function VoiceOrb({
           </div>
         </div>
       </div>
+    </>
+  );
+
+  const frame = cn(
+    "grid place-items-center",
+    clickable &&
+      "rounded-full bg-transparent p-0 outline-none transition-transform duration-200 focus-visible:ring-2 focus-visible:ring-violet-300/50",
+    clickable && !disabled && "cursor-pointer hover:scale-[1.03]",
+    clickable && disabled && "cursor-wait"
+  );
+
+  if (clickable) {
+    return (
+      <button
+        type="button"
+        aria-label={actionLabel}
+        title={actionLabel}
+        disabled={disabled}
+        onClick={onClick}
+        className={frame}
+      >
+        {visual}
+      </button>
+    );
+  }
+
+  return (
+    <div role="img" aria-label={status} className={frame}>
+      {visual}
     </div>
   );
 }

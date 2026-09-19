@@ -41,12 +41,28 @@ export default function RoomPage() {
     const hasResults = Boolean(room.result?.titles.length);
     const idleOrb = room.orb === "thinking" ? "thinking" : "idle";
     const micHint = groupMode ? group.micHint : room.micHint;
+    const connecting = groupMode ? group.orb === "connecting" : room.orb === "connecting";
+    const startSession = () => void (groupMode ? group.start() : room.start());
+    const startOrb = (
+      <VoiceOrb
+        state={idleOrb}
+        size={hasResults ? "sm" : "md"}
+        onClick={startSession}
+        disabled={connecting}
+      />
+    );
 
     return (
       <main className="mx-auto flex h-full max-w-xl flex-col overflow-hidden px-6 py-6 md:px-8">
         <div className="shrink-0 space-y-3">
-          <div className="flex items-center justify-between gap-4">
-            <h1 className="text-3xl font-semibold">Room</h1>
+          <div className="flex items-center gap-3">
+            <h1 className="sr-only">Room</h1>
+            <div className="min-w-0 flex-1">
+              <RoomTextSearch
+                busy={room.busy}
+                onSubmit={(text) => void room.submitText(text)}
+              />
+            </div>
             <GroupModeToggle checked={groupMode} onChange={setGroupMode} />
           </div>
           <HealthBanner />
@@ -63,7 +79,7 @@ export default function RoomPage() {
             </div>
           ) : (
             <div className="flex min-h-0 flex-1 flex-col items-center justify-center">
-              <VoiceOrb state={idleOrb} />
+              {startOrb}
             </div>
           )}
           <div className="flex shrink-0 flex-col items-center gap-3 pt-2">
@@ -74,22 +90,7 @@ export default function RoomPage() {
                 “{room.lastHeard}”
               </p>
             ) : null}
-            <RoomTextSearch
-              busy={room.busy}
-              onSubmit={(text) => void room.submitText(text)}
-            />
-            <button
-              type="button"
-              className="inline-flex h-8 items-center justify-center rounded-[6px] bg-violet-500 px-3.5 text-xs font-medium text-white transition-colors hover:bg-violet-400 disabled:pointer-events-none disabled:opacity-50 md:h-11 md:rounded-[8px] md:px-6 md:text-sm"
-              onClick={() => void (groupMode ? group.start() : room.start())}
-              disabled={
-                groupMode
-                  ? group.orb === "connecting"
-                  : room.orb === "connecting"
-              }
-            >
-              Start session
-            </button>
+            {hasResults ? startOrb : null}
           </div>
         </div>
       </main>
@@ -283,11 +284,17 @@ function LiveSessionView({
       }}
     >
       <div className="flex shrink-0 items-center justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-3">
+        <div className="flex min-w-0 flex-1 items-center gap-3">
           <BrandLogo />
           <p className="hidden text-[11px] font-medium tracking-[0.16em] text-violet-300 uppercase sm:block">
             {room.orb === "connecting" ? "Room starting" : "Room live"}
           </p>
+          <RoomTextSearch
+            busy={room.busy}
+            autoOpen={!room.micEnabled}
+            persistOpen={!room.micEnabled}
+            onSubmit={(text) => void room.submitText(text)}
+          />
         </div>
         <button
           type="button"
@@ -350,13 +357,6 @@ function RoomDock({
         <VoiceOrb state={orb} size={compact ? "sm" : "md"} docked />
         <RoomCaption room={room} compact={compact} />
       </div>
-
-      <RoomTextSearch
-        busy={room.busy}
-        autoOpen={!micEnabled}
-        persistOpen={!micEnabled}
-        onSubmit={(text) => void room.submitText(text)}
-      />
 
       <div className="flex w-full max-w-[13.5rem] items-center justify-between md:hidden">
         {micEnabled ? (
@@ -615,7 +615,7 @@ function RoomTextSearch({
       className={cn(
         "flex items-center overflow-hidden border-b transition-[width,border-color] duration-200",
         open
-          ? "w-full max-w-[16rem] border-violet-300/25"
+          ? "w-full max-w-md border-violet-300/40"
           : "w-8 border-transparent"
       )}
       onSubmit={submit}
@@ -662,7 +662,7 @@ function RoomTextSearch({
         aria-hidden={!open}
         aria-label="Type what you want to watch"
         className={cn(
-          "h-8 min-w-0 flex-1 bg-transparent text-sm text-violet-50 outline-none placeholder:text-violet-200/35 disabled:opacity-50",
+          "h-8 min-w-0 flex-1 bg-transparent text-sm text-violet-50 outline-none placeholder:text-violet-200/50 disabled:opacity-50",
           open ? "pr-1" : "pointer-events-none w-0 px-0"
         )}
       />
