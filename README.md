@@ -26,7 +26,7 @@ Copy `.env.example` to `.env.local` and fill secrets there (never commit `.env.l
 ### 1. App
 
 ```bash
-cp .env.example .env.local   # then add OPENAI_API_KEY and TMDB_API_KEY
+cp .env.example .env.local   # OPENAI_API_KEY / TMDB_API_KEY, or GitHub aliases OPENAI_CONVERSTION_WATCHNEXT / TMDB_API
 npm install
 npm run dev                  # http://127.0.0.1:3000  (binds 0.0.0.0 for LAN/iPhone)
 ```

@@ -1,6 +1,11 @@
 import { existsSync, readFileSync } from "node:fs";
 import { embedTexts, titleEmbedText } from "../lib/embeddings";
-import { getServerEnv, requireOpenAI, requireTmdb } from "../lib/env";
+import {
+  applyGitHubEnvAliases,
+  getServerEnv,
+  requireOpenAI,
+  requireTmdb,
+} from "../lib/env";
 import { createAdminSupabase } from "../lib/supabase/admin";
 import {
   enrichTitle,
@@ -30,6 +35,7 @@ function loadEnvFile(path: string) {
 
 loadEnvFile(".env.local");
 loadEnvFile(".env");
+const aliasSources = applyGitHubEnvAliases();
 
 function argValue(flag: string, fallback: number) {
   const idx = process.argv.indexOf(flag);
@@ -46,6 +52,9 @@ async function main() {
   const skipEnrich = process.argv.includes("--quick");
   console.log(
     `WatchNext ingest: ${pages} TMDB pages each of movies + TV${skipEnrich ? " (quick, no keywords/cast)" : ""}.`
+  );
+  console.log(
+    `Using ${aliasSources.openaiSource} and ${aliasSources.tmdbSource} (values not logged).`
   );
 
   const collected: TmdbTitle[] = [];
