@@ -22,31 +22,100 @@ function chunk(type, data) {
   return Buffer.concat([len, t, data, crc]);
 }
 
-/** Dark purple field with a luminous orb. `orbScale` ~0.34 any, ~0.22 maskable safe-zone. */
-function png(width, height = width, { orbScale = 0.34 } = {}) {
+function clamp(v, a = 0, b = 1) {
+  return Math.min(b, Math.max(a, v));
+}
+
+function roundedRectD(px, py, x, y, w, h, r) {
+  const cx = x + w / 2;
+  const cy = y + h / 2;
+  const dx = Math.abs(px - cx) - (w / 2 - r);
+  const dy = Math.abs(py - cy) - (h / 2 - r);
+  const ox = Math.max(dx, 0);
+  const oy = Math.max(dy, 0);
+  return Math.hypot(ox, oy) + Math.min(Math.max(dx, dy), 0) - r;
+}
+
+function inTriangle(px, py, ax, ay, bx, by, cx, cy) {
+  const v0x = cx - ax;
+  const v0y = cy - ay;
+  const v1x = bx - ax;
+  const v1y = by - ay;
+  const v2x = px - ax;
+  const v2y = py - ay;
+  const dot00 = v0x * v0x + v0y * v0y;
+  const dot01 = v0x * v1x + v0y * v1y;
+  const dot02 = v0x * v2x + v0y * v2y;
+  const dot11 = v1x * v1x + v1y * v1y;
+  const dot12 = v1x * v2x + v1y * v2y;
+  const denom = dot00 * dot11 - dot01 * dot01;
+  if (Math.abs(denom) < 1e-8) return false;
+  const u = (dot11 * dot02 - dot01 * dot12) / denom;
+  const v = (dot00 * dot12 - dot01 * dot02) / denom;
+  return u >= 0 && v >= 0 && u + v <= 1;
+}
+
+function cover(d) {
+  return clamp(0.6 - d);
+}
+
+function mix(a, b, t) {
+  return a + (b - a) * t;
+}
+
+/** Dark field + stacked poster cards + play skip. `markScale` ~0.62 any, ~0.42 maskable. */
+function png(width, height = width, { markScale = 0.62 } = {}) {
   const raw = Buffer.alloc((width * 4 + 1) * height);
-  const cx = (width - 1) / 2;
-  const cy = (height - 1) / 2;
   const minSide = Math.min(width, height);
-  const rOrb = minSide * orbScale;
+  const mark = minSide * markScale;
+  const ox = (width - mark) / 2;
+  const oy = (height - mark) / 2;
+  const s = mark / 40;
+  const back = { x: 15.6, y: 6, w: 20, h: 22.8, r: 6.4 };
+  const front = { x: 4.4, y: 11.2, w: 20, h: 22.8, r: 6.4 };
+
   for (let y = 0; y < height; y++) {
     const row = y * (width * 4 + 1);
     raw[row] = 0;
     for (let x = 0; x < width; x++) {
       const i = row + 1 + x * 4;
-      const d = Math.sqrt((x - cx) ** 2 + (y - cy) ** 2);
-      const glow = Math.max(0, 1 - d / (minSide * 0.55));
-      let r = 12 + 40 * glow;
-      let g = 6 + 18 * glow;
-      let b = 20 + 70 * glow;
-      if (d < rOrb) {
-        const nx = (x - cx) / rOrb;
-        const ny = (y - cy) / rOrb;
-        const highlight = Math.max(0, 1 - Math.hypot(nx + 0.35, ny + 0.4));
-        r = 109 + 110 * highlight;
-        g = 40 + 140 * highlight;
-        b = 217 + 20 * highlight;
+      const dx = x - width / 2;
+      const dy = y - height / 2;
+      const glow = Math.max(0, 1 - Math.hypot(dx, dy) / (minSide * 0.58));
+      let r = 12 + 38 * glow;
+      let g = 6 + 16 * glow;
+      let b = 20 + 68 * glow;
+
+      const mx = (x - ox) / s;
+      const my = (y - oy) / s;
+      const aa = Math.max(0.08, 0.85 / s);
+      const dBack = roundedRectD(mx, my, back.x, back.y, back.w, back.h, back.r);
+      const dFront = roundedRectD(mx, my, front.x, front.y, front.w, front.h, front.r);
+      const aBack = cover(dBack / aa);
+      const aFront = cover(dFront / aa);
+      const aPlay = inTriangle(mx, my, 10, 19.15, 10, 26.85, 16.48, 23)
+        ? 1
+        : 0;
+
+      if (aBack > 0) {
+        r = mix(r, 76, aBack);
+        g = mix(g, 29, aBack);
+        b = mix(b, 149, aBack);
       }
+      if (aFront > 0) {
+        const nx = (mx - front.x) / front.w;
+        const ny = (my - front.y) / front.h;
+        const highlight = Math.max(0, 1 - Math.hypot(nx - 0.3, ny - 0.22) * 1.65);
+        r = mix(r, 109 + 78 * highlight, aFront);
+        g = mix(g, 40 + 96 * highlight, aFront);
+        b = mix(b, 217 + 18 * highlight, aFront);
+      }
+      if (aPlay > 0 && aFront > 0.35) {
+        r = mix(r, 243, aPlay);
+        g = mix(g, 232, aPlay);
+        b = mix(b, 255, aPlay);
+      }
+
       raw[i] = Math.min(255, r);
       raw[i + 1] = Math.min(255, g);
       raw[i + 2] = Math.min(255, b);
@@ -90,21 +159,20 @@ function ico(images) {
 const iconSvg = `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="WatchNext">
   <rect width="512" height="512" fill="#0c0614"/>
-  <defs>
-    <radialGradient id="orb" cx="38%" cy="32%" r="68%">
-      <stop offset="0%" stop-color="#f3e8ff"/>
-      <stop offset="42%" stop-color="#c084fc"/>
-      <stop offset="78%" stop-color="#6d28d9"/>
-      <stop offset="100%" stop-color="#4c1d95"/>
-    </radialGradient>
-  </defs>
-  <circle cx="256" cy="256" r="174" fill="url(#orb)"/>
+  <g transform="translate(56 56) scale(10)">
+    <rect x="15.6" y="6" width="20" height="22.8" rx="6.4" fill="#4c1d95"/>
+    <rect x="15.6" y="6" width="20" height="22.8" rx="6.4" stroke="#a78bfa" stroke-opacity="0.4" stroke-width="0.75"/>
+    <rect x="4.4" y="11.2" width="20" height="22.8" rx="6.4" fill="#6d28d9"/>
+    <ellipse cx="10.4" cy="16.4" rx="6.8" ry="5.2" fill="#c084fc" fill-opacity="0.42"/>
+    <path d="M11.2 19.15c-.52-.32-1.2.05-1.2.66v6.38c0 .61.68.98 1.2.66l5.28-3.19c.48-.29.48-1.03 0-1.32l-5.28-3.19Z" fill="#f3e8ff"/>
+  </g>
 </svg>
 `;
 
 const maskSvg = `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16">
-  <circle cx="8" cy="8" r="5.5" fill="#000"/>
+  <rect x="6.2" y="2.2" width="8" height="9.2" rx="2.2" fill="#000"/>
+  <rect x="1.8" y="4.4" width="8" height="9.2" rx="2.2" fill="#000"/>
 </svg>
 `;
 
@@ -131,8 +199,8 @@ const anySizes = [16, 32, 48, 72, 96, 128, 144, 152, 167, 180, 192, 256, 384, 51
 for (const size of anySizes) {
   writeFileSync(join(icons, `icon-${size}.png`), png(size));
 }
-writeFileSync(join(icons, "icon-192-maskable.png"), png(192, 192, { orbScale: 0.22 }));
-writeFileSync(join(icons, "icon-512-maskable.png"), png(512, 512, { orbScale: 0.22 }));
+writeFileSync(join(icons, "icon-192-maskable.png"), png(192, 192, { markScale: 0.42 }));
+writeFileSync(join(icons, "icon-512-maskable.png"), png(512, 512, { markScale: 0.42 }));
 writeFileSync(join(icons, "favicon-16x16.png"), png(16));
 writeFileSync(join(icons, "favicon-32x32.png"), png(32));
 writeFileSync(join(icons, "apple-touch-icon-120.png"), png(120));
@@ -176,7 +244,7 @@ const appleSplash = [
   { w: 2048, h: 2732 },
 ];
 for (const { w, h } of appleSplash) {
-  writeFileSync(join(splash, `apple-splash-${w}x${h}.png`), png(w, h, { orbScale: 0.16 }));
+  writeFileSync(join(splash, `apple-splash-${w}x${h}.png`), png(w, h, { markScale: 0.22 }));
 }
 
 console.log("Wrote PWA icons, Apple splash, favicon, and social images.");

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import { Clapperboard, Mic, MicOff, X } from "lucide-react";
+import { BrandLogo } from "@/components/brand-logo";
 import { VoiceOrb } from "@/components/voice-orb";
 import { PosterTiles } from "@/components/poster-tiles";
 import { HealthBanner } from "@/components/health-banner";
@@ -79,10 +80,13 @@ export default function RoomPage() {
         paddingBottom: "max(0.4rem, env(safe-area-inset-bottom))",
       }}
     >
-      <div className="flex shrink-0 items-center justify-between">
-        <p className="text-[11px] font-medium tracking-[0.16em] text-violet-300 uppercase">
-          {room.orb === "connecting" ? "Room starting" : "Room live"}
-        </p>
+      <div className="flex shrink-0 items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <BrandLogo />
+          <p className="hidden text-[11px] font-medium tracking-[0.16em] text-violet-300 uppercase sm:block">
+            {room.orb === "connecting" ? "Room starting" : "Room live"}
+          </p>
+        </div>
         <button
           type="button"
           className="text-[11px] tracking-[0.18em] text-violet-200/70 uppercase transition-colors hover:text-violet-100"
