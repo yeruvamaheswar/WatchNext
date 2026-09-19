@@ -1,18 +1,15 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
-import { Clapperboard, Mic, MicOff, Users, X } from "lucide-react";
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { Clapperboard, Mic, MicOff, Search, Users, X } from "lucide-react";
 import { BrandLogo } from "@/components/brand-logo";
 import { VoiceOrb } from "@/components/voice-orb";
 import { PosterTiles } from "@/components/poster-tiles";
 import { HealthBanner } from "@/components/health-banner";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { useGroupListen } from "@/hooks/use-group-listen";
 import { useRoomSession } from "@/hooks/use-room-session";
 import { useRoomUi } from "@/hooks/use-room-ui";
 import { useWatchNext } from "@/hooks/use-watchnext";
-import { primaryActionClass } from "@/lib/button-styles";
 import { cn } from "@/lib/utils";
 
 export default function RoomPage() {
@@ -41,9 +38,13 @@ export default function RoomPage() {
   const sessionActive = groupMode ? group.active : room.active;
 
   if (!sessionActive) {
+    const hasResults = Boolean(room.result?.titles.length);
+    const idleOrb = room.orb === "thinking" ? "thinking" : "idle";
+    const micHint = groupMode ? group.micHint : room.micHint;
+
     return (
       <main className="mx-auto flex h-full max-w-xl flex-col overflow-hidden px-6 py-6 md:px-8">
-        <div className="space-y-3">
+        <div className="shrink-0 space-y-3">
           <div>
             <p className="text-[11px] font-medium tracking-[0.16em] text-violet-300 uppercase">
               Room
@@ -52,20 +53,38 @@ export default function RoomPage() {
             <p className="mt-2 max-w-md text-sm text-muted-foreground">
               {groupMode
                 ? "Group mode listens on this phone, labels Person 1 / 2 / 3, then suggests what to watch together."
-                : "One device hears everyone nearby. Talk it out, then we pick from the catalog."}
+                : "Type a search, or start a session so one device can hear everyone nearby."}
             </p>
           </div>
           <HealthBanner />
-          {(groupMode ? group.micHint : room.micHint) ? (
+          {micHint ? (
             <div className="border border-amber-500/30 bg-amber-950/40 px-4 py-2.5 text-xs text-amber-100">
-              {groupMode ? group.micHint : room.micHint} You can still start
-              {groupMode ? "." : " and type what you want to watch."}
+              {micHint} Text search works without the microphone.
             </div>
           ) : null}
         </div>
-        <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-5">
-          <VoiceOrb state="idle" />
-          <div className="flex w-full max-w-xs flex-col items-center gap-3">
+        <div className="flex min-h-0 flex-1 flex-col">
+          {hasResults && room.result ? (
+            <div className="min-h-0 flex-1 py-4">
+              <PosterTiles titles={room.result.titles} layout="rail" />
+            </div>
+          ) : (
+            <div className="flex min-h-0 flex-1 flex-col items-center justify-center">
+              <VoiceOrb state={idleOrb} />
+            </div>
+          )}
+          <div className="flex shrink-0 flex-col items-center gap-3 pt-2">
+            {room.busy ? (
+              <p className="text-center text-xs text-violet-200/55">Finding a pick…</p>
+            ) : room.lastHeard ? (
+              <p className="max-w-sm text-center text-sm text-violet-100/80">
+                “{room.lastHeard}”
+              </p>
+            ) : null}
+            <RoomTextSearch
+              busy={room.busy}
+              onSubmit={(text) => void room.submitText(text)}
+            />
             <button
               type="button"
               className="inline-flex h-8 items-center justify-center rounded-[6px] bg-violet-500 px-3.5 text-xs font-medium text-white transition-colors hover:bg-violet-400 disabled:pointer-events-none disabled:opacity-50 md:h-11 md:rounded-[8px] md:px-6 md:text-sm"
@@ -81,16 +100,15 @@ export default function RoomPage() {
             <GroupModeToggle
               checked={groupMode}
               onChange={setGroupMode}
-              disabled={false}
             />
+            <p className="text-center text-xs text-muted-foreground">
+              {groupMode
+                ? "Suggests after ~6s of silence, or tap Suggest. Mic needs HTTPS or localhost."
+                : room.micHint
+                  ? "Mic access needs HTTPS or localhost. Search by text anytime."
+                  : "The mic turns on only after you start a session."}
+            </p>
           </div>
-          <p className="text-center text-xs text-muted-foreground">
-            {groupMode
-              ? "Suggests after ~6s of silence, or tap Suggest. Mic needs HTTPS or localhost."
-              : room.micHint
-                ? "Type your request after starting. Mic access needs HTTPS or localhost."
-                : "Mic access is used only while the session is on."}
-          </p>
         </div>
       </main>
     );
@@ -360,12 +378,17 @@ function RoomDock({
         <RoomCaption room={room} compact />
       </div>
 
-      {!micEnabled ? (
-        <RoomTextComposer
-          busy={room.busy}
-          onSubmit={(text) => void room.submitText(text)}
-        />
-      ) : null}
+      <div className="hidden md:contents">
+        <VoiceOrb state={orb} size={compact ? "sm" : "md"} docked />
+        <RoomCaption room={room} compact={compact} />
+      </div>
+
+      <RoomTextSearch
+        busy={room.busy}
+        autoOpen={!micEnabled}
+        persistOpen={!micEnabled}
+        onSubmit={(text) => void room.submitText(text)}
+      />
 
       <div className="flex w-full max-w-[13.5rem] items-center justify-between md:hidden">
         {micEnabled ? (
@@ -388,14 +411,6 @@ function RoomDock({
           onClick={controls.onEnd}
           iconOnly
         />
-      </div>
-
-      <div className="hidden md:block">
-        <VoiceOrb state={orb} size={compact ? "sm" : "md"} docked />
-      </div>
-
-      <div className="hidden w-full md:block">
-        <RoomCaption room={room} compact={compact} />
       </div>
 
       <div className="hidden md:block">
@@ -487,7 +502,12 @@ function RoomControls({
         onClick={onSuggest}
         disabled={busy || connecting}
       />
-      <ControlKey icon={<X />} label="End" danger onClick={onEnd} />
+      <ControlKey
+        icon={<X />}
+        label="End"
+        danger
+        onClick={onEnd}
+      />
     </div>
   );
 }
@@ -557,10 +577,8 @@ function ControlKey({
         <span
           className={cn(
             "text-[10px] md:text-xs",
-            emphasize &&
-              "text-violet-200 md:text-violet-200/65 md:group-hover:text-violet-100",
-            danger &&
-              "text-rose-300/75 md:text-violet-200/65 md:group-hover:text-violet-100",
+            emphasize && "text-violet-200 md:text-violet-200/65 md:group-hover:text-violet-100",
+            danger && "text-rose-300/75 md:text-violet-200/65 md:group-hover:text-violet-100",
             !emphasize &&
               !danger &&
               "text-violet-200/60 md:text-violet-200/65 md:group-hover:text-violet-100"
@@ -573,40 +591,113 @@ function ControlKey({
   );
 }
 
-function RoomTextComposer({
+function RoomTextSearch({
   busy,
+  autoOpen,
+  persistOpen,
   onSubmit,
 }: {
   busy: boolean;
+  autoOpen?: boolean;
+  persistOpen?: boolean;
   onSubmit: (text: string) => void;
 }) {
+  const [open, setOpen] = useState(Boolean(autoOpen));
   const [draft, setDraft] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+  const toggleRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (autoOpen) setOpen(true);
+  }, [autoOpen]);
+
+  useEffect(() => {
+    if (open) inputRef.current?.focus();
+  }, [open]);
+
+  function close() {
+    setDraft("");
+    setOpen(false);
+    toggleRef.current?.focus();
+  }
+
+  function submit(event?: FormEvent) {
+    event?.preventDefault();
+    const text = draft.trim();
+    if (!text) return;
+    setDraft("");
+    if (!persistOpen) setOpen(false);
+    onSubmit(text);
+  }
+
+  function toggle() {
+    if (open && draft.trim()) {
+      submit();
+      return;
+    }
+    if (open) {
+      close();
+      return;
+    }
+    setOpen(true);
+  }
+
   return (
     <form
-      className="flex w-full gap-2"
-      onSubmit={(event) => {
-        event.preventDefault();
-        const text = draft.trim();
-        if (!text) return;
-        setDraft("");
-        onSubmit(text);
-      }}
+      className={cn(
+        "flex items-center overflow-hidden border-b transition-[width,border-color] duration-200",
+        open
+          ? "w-full max-w-[16rem] border-violet-300/25"
+          : "w-8 border-transparent"
+      )}
+      onSubmit={submit}
     >
-      <Input
+      <button
+        ref={toggleRef}
+        type="button"
+        aria-label={
+          open && draft.trim()
+            ? "Search"
+            : open
+              ? "Close text search"
+              : "Search by text"
+        }
+        aria-expanded={open}
+        title="Search by text"
+        onClick={toggle}
+        className={cn(
+          "grid size-8 shrink-0 place-items-center transition-colors",
+          open
+            ? "text-violet-100"
+            : "text-violet-200/55 hover:text-violet-100"
+        )}
+      >
+        <Search className="size-4" strokeWidth={1.6} />
+      </button>
+      <input
+        ref={inputRef}
         value={draft}
         onChange={(event) => setDraft(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === "Escape") {
+            event.preventDefault();
+            close();
+          }
+          if (event.key === "Enter") {
+            event.preventDefault();
+            submit();
+          }
+        }}
         placeholder="What do you want to watch?"
-        className="h-8 rounded-md bg-white/5 px-3 text-sm md:h-11 md:rounded-xl"
         disabled={busy}
+        tabIndex={open ? 0 : -1}
+        aria-hidden={!open}
         aria-label="Type what you want to watch"
+        className={cn(
+          "h-8 min-w-0 flex-1 bg-transparent text-sm text-violet-50 outline-none placeholder:text-violet-200/35 disabled:opacity-50",
+          open ? "pr-1" : "pointer-events-none w-0 px-0"
+        )}
       />
-      <Button
-        type="submit"
-        className={cn("px-4", primaryActionClass)}
-        disabled={busy || !draft.trim()}
-      >
-        Send
-      </Button>
     </form>
   );
 }
