@@ -58,11 +58,15 @@ export function getServerEnv() {
     ),
     supabaseAnon: firstNonEmpty(
       readProcessEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY"),
-      fileEnv.NEXT_PUBLIC_SUPABASE_ANON_KEY
+      fileEnv.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+      readProcessEnv("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"),
+      fileEnv.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
     ),
     supabaseService: firstNonEmpty(
       readProcessEnv("SUPABASE_SERVICE_ROLE_KEY"),
-      fileEnv.SUPABASE_SERVICE_ROLE_KEY
+      fileEnv.SUPABASE_SERVICE_ROLE_KEY,
+      readProcessEnv("SUPABASE_SECRET_KEY"),
+      fileEnv.SUPABASE_SECRET_KEY
     ),
     embeddingModel:
       firstNonEmpty(readProcessEnv("OPENAI_EMBEDDING_MODEL"), fileEnv.OPENAI_EMBEDDING_MODEL) ||
@@ -115,11 +119,11 @@ export function requireTmdb() {
 
 export function requireSupabaseAdmin() {
   const env = getServerEnv();
-  if (!env.supabaseUrl || !env.supabaseService) {
+  if (!env.supabaseUrl || (!env.supabaseService && !env.supabaseAnon)) {
     throw new ConfigError(
-      "Local Supabase is not configured.",
+      "Supabase is not configured.",
       "MISSING_SUPABASE",
-      "Run `npx supabase start`, then set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in .env.local."
+      "Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY or NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY in .env.local. Ingest and other privileged writes also need SUPABASE_SERVICE_ROLE_KEY or SUPABASE_SECRET_KEY."
     );
   }
   return env;
