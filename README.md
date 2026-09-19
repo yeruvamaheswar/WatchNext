@@ -1,6 +1,6 @@
 # WatchNext
 
-Local-only Next.js PWA: swipe three onboarding questions, then pick something to watch on **Home** or talk it out in a ChatGPT-style **Room**. Catalog lives in local Supabase Postgres + pgvector (TMDB slice). No Vercel deploy.
+Local-only Next.js PWA: swipe three onboarding questions, then pick something to watch on **Home** or talk / type it out in a ChatGPT-style **Room**. Catalog lives in local Supabase Postgres + pgvector (TMDB slice). No Vercel deploy.
 
 ## What works without API keys
 
@@ -16,7 +16,7 @@ Clear errors appear when a key is missing:
 | --- | --- |
 | `npm run ingest` | `TMDB_API_KEY`, `OPENAI_API_KEY`, local Supabase |
 | Home “What should I watch?” | `OPENAI_API_KEY`, local Supabase with ingested embeddings |
-| Room STT / extract / TTS | `OPENAI_API_KEY` |
+| Room text chat / STT / extract / TTS | `OPENAI_API_KEY` (or GitHub alias `OPENAI_CONVERSTION_WATCHNEXT`) |
 | Room / Home suggest | `OPENAI_API_KEY` + ingested catalog |
 
 Copy `.env.example` to `.env.local` and fill secrets there (never commit `.env.local`).
@@ -76,9 +76,11 @@ npm run ingest
 
 `--quick` skips per-title keywords/cast calls. Default is 10 TMDB pages each of movies and TV (~400 titles).
 
-## Voice pipeline (Room)
+## Room chat + voice
 
-Explicit, not Realtime API:
+**Text chat** (default on Room): POST `/api/chat` with a message. The server extracts intent, replies conversationally, and only runs catalog recommend when you ask for a pick.
+
+**Voice pipeline** (optional session) — explicit, not Realtime API:
 
 1. **VAD** — energy-based speech vs silence on this device’s mic  
 2. **STT** — `/api/transcribe` (Whisper / `gpt-4o-transcribe`)  
@@ -87,7 +89,9 @@ Explicit, not Realtime API:
 5. **Suggest** — LLM picks 1–3 titles  
 6. **TTS + tiles** — `/api/tts` while poster cards slide up  
 
-Suggestions run on pause **and** watch-intent (or the **Suggest** button). Bottom tabs hide during an active session.
+Suggestions run on pause **and** watch-intent (or the **Suggest** button). Bottom tabs hide during an active voice session.
+
+Verify secret aliases without printing values: `npm run verify:openai-env`.
 
 ## Scripts
 

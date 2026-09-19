@@ -75,6 +75,29 @@ export type RecommendInput = {
   sessionExcludeIds?: number[];
 };
 
+export type ChatRole = "user" | "assistant";
+
+export type ChatMessage = {
+  role: ChatRole;
+  content: string;
+};
+
+export type ChatTurnInput = {
+  message: string;
+  history?: ChatMessage[];
+  likes?: GuestLike[];
+  likedVibes?: string[];
+  userId?: string | null;
+  sessionExcludeIds?: number[];
+};
+
+export type ChatTurnResult = {
+  reply: string;
+  extract: ExtractedIntent;
+  titles: SuggestedTitle[];
+  suggested: boolean;
+};
+
 export type HealthStatus = {
   ok: boolean;
   openai: boolean;
