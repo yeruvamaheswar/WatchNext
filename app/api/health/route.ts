@@ -1,4 +1,10 @@
-import { getServerEnv } from "@/lib/env";
+import {
+  OPENAI_KEY,
+  OPENAI_KEY_ALIAS,
+  TMDB_KEY,
+  TMDB_KEY_ALIAS,
+  getServerEnv,
+} from "@/lib/env";
 import { getPublicEnv } from "@/lib/public-env";
 import { tryCreateAdminSupabase } from "@/lib/supabase/admin";
 import { withTimeout } from "@/lib/with-timeout";
@@ -13,19 +19,19 @@ export async function GET() {
   const hints: string[] = [];
 
   if (!env.openaiKey) {
-    missing.push("OPENAI_API_KEY");
+    missing.push(`${OPENAI_KEY} (or ${OPENAI_KEY_ALIAS})`);
     hints.push(
       env.openaiKeyBlankInFile
-        ? "OPENAI_API_KEY is listed in .env.local but the value is blank. Paste the key on that same line, save the file, then refresh."
-        : "Recommendations, ingest embeddings, STT, and TTS need OPENAI_API_KEY in .env.local."
+        ? `${OPENAI_KEY} (or GitHub alias ${OPENAI_KEY_ALIAS}) is listed in .env.local but the value is blank. Paste the key on that same line, save the file, then refresh.`
+        : `Recommendations, ingest embeddings, STT, and TTS need ${OPENAI_KEY} or GitHub alias ${OPENAI_KEY_ALIAS} in .env.local.`
     );
   }
   if (!env.tmdbKey) {
-    missing.push("TMDB_API_KEY");
+    missing.push(`${TMDB_KEY} (or ${TMDB_KEY_ALIAS})`);
     hints.push(
       env.tmdbKeyBlankInFile
-        ? "TMDB_API_KEY is listed in .env.local but the value is blank. Paste the key on that same line, save the file, then refresh."
-        : "Catalog ingest needs TMDB_API_KEY."
+        ? `${TMDB_KEY} (or GitHub alias ${TMDB_KEY_ALIAS}) is listed in .env.local but the value is blank. Paste the key on that same line, save the file, then refresh.`
+        : `Catalog ingest needs ${TMDB_KEY} or GitHub alias ${TMDB_KEY_ALIAS}.`
     );
   }
   if (!pub.hasSupabase) {

@@ -3,6 +3,14 @@ import { join } from "path";
 import { loadEnvConfig } from "@next/env";
 import { ConfigError } from "@/lib/config-error";
 
+/** Canonical names. Preferred when a GitHub alias is also set. */
+export const OPENAI_KEY = "OPENAI_API_KEY";
+export const TMDB_KEY = "TMDB_API_KEY";
+
+/** GitHub secret aliases. OPENAI_CONVERSTION_WATCHNEXT is the given misspelling. */
+export const OPENAI_KEY_ALIAS = "OPENAI_CONVERSTION_WATCHNEXT";
+export const TMDB_KEY_ALIAS = "TMDB_API";
+
 function readProcessEnv(name: string) {
   return process.env[name]?.trim() ?? "";
 }
@@ -47,11 +55,51 @@ function loadMergedEnv() {
   return fileEnv;
 }
 
+/** Prefer the canonical name when both are set. Never log values. */
+export function resolveSecret(canonical: string, alias: string) {
+  return readProcessEnv(canonical) || readProcessEnv(alias);
+}
+
+/** Which env name supplied the secret, or null if neither is set. */
+export function secretNameUsed(canonical: string, alias: string) {
+  if (readProcessEnv(canonical)) return canonical;
+  if (readProcessEnv(alias)) return alias;
+  return null;
+}
+
+/** Copy GitHub aliases into canonical names when the canonical value is empty. */
+export function applyGitHubEnvAliases() {
+  const openaiSource = secretNameUsed(OPENAI_KEY, OPENAI_KEY_ALIAS);
+  const tmdbSource = secretNameUsed(TMDB_KEY, TMDB_KEY_ALIAS);
+  const openai = resolveSecret(OPENAI_KEY, OPENAI_KEY_ALIAS);
+  const tmdb = resolveSecret(TMDB_KEY, TMDB_KEY_ALIAS);
+  if (openai && !readProcessEnv(OPENAI_KEY)) process.env[OPENAI_KEY] = openai;
+  if (tmdb && !readProcessEnv(TMDB_KEY)) process.env[TMDB_KEY] = tmdb;
+  return { openaiSource, tmdbSource };
+}
+
+function fileHasBlank(fileEnv: Record<string, string>, ...names: string[]) {
+  const listed = names.filter((name) => Object.hasOwn(fileEnv, name));
+  if (listed.length === 0) return false;
+  return listed.every((name) => !fileEnv[name]?.trim());
+}
+
 export function getServerEnv() {
   const fileEnv = loadMergedEnv();
+  applyGitHubEnvAliases();
   return {
-    openaiKey: firstNonEmpty(readProcessEnv("OPENAI_API_KEY"), fileEnv.OPENAI_API_KEY),
-    tmdbKey: firstNonEmpty(readProcessEnv("TMDB_API_KEY"), fileEnv.TMDB_API_KEY),
+    openaiKey: firstNonEmpty(
+      readProcessEnv(OPENAI_KEY),
+      fileEnv[OPENAI_KEY],
+      readProcessEnv(OPENAI_KEY_ALIAS),
+      fileEnv[OPENAI_KEY_ALIAS]
+    ),
+    tmdbKey: firstNonEmpty(
+      readProcessEnv(TMDB_KEY),
+      fileEnv[TMDB_KEY],
+      readProcessEnv(TMDB_KEY_ALIAS),
+      fileEnv[TMDB_KEY_ALIAS]
+    ),
     supabaseUrl: firstNonEmpty(
       readProcessEnv("NEXT_PUBLIC_SUPABASE_URL"),
       fileEnv.NEXT_PUBLIC_SUPABASE_URL
@@ -82,23 +130,23 @@ export function getServerEnv() {
     ingestPages:
       Number(firstNonEmpty(readProcessEnv("TMDB_INGEST_PAGES"), fileEnv.TMDB_INGEST_PAGES) || 10) ||
       10,
-    openaiKeyBlankInFile: Object.hasOwn(fileEnv, "OPENAI_API_KEY") && !fileEnv.OPENAI_API_KEY?.trim(),
-    tmdbKeyBlankInFile: Object.hasOwn(fileEnv, "TMDB_API_KEY") && !fileEnv.TMDB_API_KEY?.trim(),
+    openaiKeyBlankInFile: fileHasBlank(fileEnv, OPENAI_KEY, OPENAI_KEY_ALIAS),
+    tmdbKeyBlankInFile: fileHasBlank(fileEnv, TMDB_KEY, TMDB_KEY_ALIAS),
   };
 }
 
 function openaiHint() {
   const env = getServerEnv();
   if (env.openaiKeyBlankInFile) {
-    return "OPENAI_API_KEY is listed in .env.local but the value is blank. Paste the key on that same line (OPENAI_API_KEY=sk-...), save the file, then try again.";
+    return `${OPENAI_KEY} (or GitHub alias ${OPENAI_KEY_ALIAS}) is listed in .env.local but the value is blank. Paste the key on that same line (${OPENAI_KEY}=sk-...), save the file, then try again.`;
   }
-  return "Add OPENAI_API_KEY to .env.local. Needed for ingest embeddings, recommendations, transcription, and TTS.";
+  return `Add ${OPENAI_KEY} (or GitHub alias ${OPENAI_KEY_ALIAS}) to .env.local. Needed for ingest embeddings, recommendations, transcription, and TTS.`;
 }
 
 export function requireOpenAI() {
   const key = getServerEnv().openaiKey;
   if (!key) {
-    throw new ConfigError("OPENAI_API_KEY is not set.", "MISSING_OPENAI", openaiHint());
+    throw new ConfigError(`${OPENAI_KEY} is not set.`, "MISSING_OPENAI", openaiHint());
   }
   return key;
 }
@@ -107,11 +155,11 @@ export function requireTmdb() {
   const key = getServerEnv().tmdbKey;
   if (!key) {
     throw new ConfigError(
-      "TMDB_API_KEY is not set.",
+      `${TMDB_KEY} is not set.`,
       "MISSING_TMDB",
       getServerEnv().tmdbKeyBlankInFile
-        ? "TMDB_API_KEY is listed in .env.local but the value is blank. Paste the key on that same line, save the file, then try again."
-        : "Add TMDB_API_KEY to .env.local. Needed to ingest the catalog."
+        ? `${TMDB_KEY} (or GitHub alias ${TMDB_KEY_ALIAS}) is listed in .env.local but the value is blank. Paste the key on that same line, save the file, then try again.`
+        : `Add ${TMDB_KEY} (or GitHub alias ${TMDB_KEY_ALIAS}) to .env.local. Needed to ingest the catalog.`
     );
   }
   return key;
