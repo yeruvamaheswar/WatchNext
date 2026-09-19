@@ -63,14 +63,21 @@ export function WatchNextProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let cancelled = false;
-    const supabase = createBrowserSupabase();
+    let supabase = null as ReturnType<typeof createBrowserSupabase>;
+    try {
+      supabase = createBrowserSupabase();
+    } catch {
+      supabase = null;
+    }
 
-    const boot = () => {
-      if (cancelled) return;
+    try {
       setGuestState(loadGuest());
-      setReady(true);
+    } catch {
+      setGuestState(emptyGuest());
+    }
+    setReady(true);
 
-      if (!supabase) return;
+    if (supabase) {
       void (async () => {
         try {
           const { data } = await withTimeout(supabase.auth.getSession(), 2000);
@@ -87,16 +94,14 @@ export function WatchNextProvider({ children }: { children: React.ReactNode }) {
           // Local guest session is enough when Auth is down.
         }
       })();
-    };
+    }
 
-    const id = window.setTimeout(boot, 0);
     const sub = supabase?.auth.onAuthStateChange((_event, next) => {
       if (!cancelled) setSession(next);
     });
 
     return () => {
       cancelled = true;
-      window.clearTimeout(id);
       sub?.data.subscription.unsubscribe();
     };
   }, []);

@@ -1,4 +1,4 @@
-const CACHE = "watchnext-v1";
+const CACHE = "watchnext-v2";
 
 self.addEventListener("install", (event) => {
   event.waitUntil(

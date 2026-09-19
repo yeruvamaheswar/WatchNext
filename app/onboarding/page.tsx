@@ -7,6 +7,7 @@ import { useWatchNext } from "@/hooks/use-watchnext";
 import {
   FALLBACK_MOVIES,
   FALLBACK_SHOWS,
+  ONBOARDING_DECK_SIZE,
   sampleOnboardingDeck,
   VIBE_CARDS,
 } from "@/lib/onboarding-catalog";
@@ -30,21 +31,21 @@ export default function OnboardingPage() {
     rememberOnboardingDeck,
   } = useWatchNext();
   const [step, setStep] = useState(0);
-  const [movies, setMovies] = useState<TitleCard[]>([]);
-  const [shows, setShows] = useState<TitleCard[]>([]);
-  const [vibes, setVibes] = useState<VibeCard[]>([]);
-  const [deckReady, setDeckReady] = useState(false);
+  const [movies, setMovies] = useState(() => FALLBACK_MOVIES.slice(0, ONBOARDING_DECK_SIZE));
+  const [shows, setShows] = useState(() => FALLBACK_SHOWS.slice(0, ONBOARDING_DECK_SIZE));
+  const [vibes, setVibes] = useState(() => VIBE_CARDS.slice(0, ONBOARDING_DECK_SIZE));
   const [finishing, setFinishing] = useState(false);
   const stepRef = useRef(0);
-  const fetchedRef = useRef(false);
+  const rememberRef = useRef(rememberOnboardingDeck);
+  const seenRef = useRef(guest.seenOnboarding);
   stepRef.current = step;
+  rememberRef.current = rememberOnboardingDeck;
+  seenRef.current = guest.seenOnboarding;
 
   useEffect(() => {
-    if (!ready || fetchedRef.current) return;
-    fetchedRef.current = true;
     let cancelled = false;
     const params = new URLSearchParams();
-    const seen = guest.seenOnboarding;
+    const seen = seenRef.current;
     if (seen.movieIds.length) params.set("excludeMovies", seen.movieIds.join(","));
     if (seen.showIds.length) params.set("excludeShows", seen.showIds.join(","));
     if (seen.vibeIds.length) params.set("excludeVibes", seen.vibeIds.join(","));
@@ -65,25 +66,19 @@ export default function OnboardingPage() {
         setMovies(nextMovies);
         setShows(nextShows);
         setVibes(nextVibes);
-        rememberOnboardingDeck({
+        rememberRef.current({
           movieIds: nextMovies.map((card: TitleCard) => card.tmdbId),
           showIds: nextShows.map((card: TitleCard) => card.tmdbId),
           vibeIds: nextVibes.map((card: VibeCard) => card.id),
         });
       })
       .catch(() => {
-        if (cancelled) return;
-        setMovies(sampleOnboardingDeck(FALLBACK_MOVIES));
-        setShows(sampleOnboardingDeck(FALLBACK_SHOWS));
-        setVibes(sampleOnboardingDeck(VIBE_CARDS));
-      })
-      .finally(() => {
-        if (!cancelled) setDeckReady(true);
+        // Static decks are already on screen.
       });
     return () => {
       cancelled = true;
     };
-  }, [guest.seenOnboarding, ready, rememberOnboardingDeck]);
+  }, []);
 
   useEffect(() => {
     if (ready && guest.onboardingComplete) router.replace("/home");
@@ -147,7 +142,7 @@ export default function OnboardingPage() {
           <div className="flex min-h-[420px] flex-col items-center justify-center gap-2 text-muted-foreground">
             <p data-testid="onboarding-saving">Saving taste…</p>
           </div>
-        ) : deckReady ? (
+        ) : (
           <SwipeDeck
             key={step}
             items={items}
@@ -179,10 +174,6 @@ export default function OnboardingPage() {
             }}
             onEmpty={nextStep}
           />
-        ) : (
-          <div className="flex min-h-[420px] items-center justify-center text-sm text-muted-foreground">
-            Loading titles…
-          </div>
         )}
       </div>
     </div>
