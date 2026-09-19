@@ -1,4 +1,5 @@
 import { requireTmdb } from "@/lib/env";
+import type { TitleCard } from "@/lib/types";
 
 const BASE = "https://api.themoviedb.org/3";
 
@@ -160,6 +161,48 @@ function yearOf(date?: string | null) {
   if (!date) return null;
   const year = Number(date.slice(0, 4));
   return Number.isFinite(year) ? year : null;
+}
+
+export function toTitleCard(title: TmdbTitle): TitleCard {
+  return {
+    tmdbId: title.tmdbId,
+    mediaType: title.mediaType,
+    name: title.name,
+    year: title.year,
+    overview: title.overview,
+    genres: title.genres,
+    posterPath: title.posterPath,
+    backdropPath: title.backdropPath,
+    voteAverage: title.voteAverage,
+    tagline: title.tagline,
+    topCast: title.topCast,
+  };
+}
+
+export function cardsWithPosters(cards: TitleCard[]): TitleCard[] {
+  return cards.filter((card) => Boolean(card.posterPath));
+}
+
+export async function fetchOnboardingPool() {
+  const [movies, shows] = await Promise.all([
+    fetchPopular("movie", 1),
+    fetchPopular("tv", 1),
+  ]);
+  return {
+    movies: cardsWithPosters(movies.map(toTitleCard)),
+    shows: cardsWithPosters(shows.map(toTitleCard)),
+  };
+}
+
+export async function fetchPosterPath(
+  mediaType: "movie" | "tv",
+  tmdbId: number
+): Promise<string | null> {
+  const path = mediaType === "movie" ? `/movie/${tmdbId}` : `/tv/${tmdbId}`;
+  const data = await tmdbFetch<{ poster_path?: string | null }>(path, {
+    language: "en-US",
+  });
+  return data.poster_path ?? null;
 }
 
 export async function mapPool<T, R>(

@@ -1,69 +1,99 @@
 import type { TitleCard, VibeCard } from "@/lib/types";
 
+export const ONBOARDING_DECK_SIZE = 3;
+
+export function shuffleInPlace<T>(items: T[]) {
+  for (let i = items.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [items[i], items[j]] = [items[j], items[i]];
+  }
+  return items;
+}
+
+export function sampleOnboardingDeck<T>(
+  items: T[],
+  size = ONBOARDING_DECK_SIZE,
+  isExcluded?: (item: T) => boolean
+) {
+  const unseen = isExcluded ? items.filter((item) => !isExcluded(item)) : items;
+  const pool = unseen.length >= size ? unseen : items;
+  return shuffleInPlace([...pool]).slice(0, Math.min(size, pool.length));
+}
+
 export const VIBE_CARDS: VibeCard[] = [
   {
     id: "comfort",
     name: "Comfort",
     description: "Cozy, familiar, low-stakes warmth",
     prompt: "comforting cozy feel-good familiar warm",
+    backdropPath: "/6n53UI4mX9QMfe2S0Pgt8mGebY1.jpg",
   },
   {
     id: "funny",
     name: "Funny",
     description: "Comedy, wit, and easy laughs",
     prompt: "funny comedy witty laugh-out-loud humorous",
+    backdropPath: "/tbzWgnaqhFwN5mCIiwbgN5oiw0V.jpg",
   },
   {
     id: "intense",
     name: "Intense",
     description: "High stakes, thrill, edge-of-seat",
     prompt: "intense thrilling gripping high-stakes suspense",
+    backdropPath: "/fRGxZuo7jJUWQsVg9PREb98Aclp.jpg",
   },
   {
     id: "thoughtful",
     name: "Thoughtful",
     description: "Smart, reflective, lingering ideas",
     prompt: "thoughtful cerebral reflective intelligent slow-burn",
+    backdropPath: "/8MUZz7oPXQftFTslZpRP3CVMOoq.jpg",
   },
   {
     id: "romantic",
     name: "Romantic",
     description: "Love stories and chemistry",
     prompt: "romantic love story chemistry heartfelt",
+    backdropPath: "/nlPCdZlHtRNcF6C9hzUH4ebmV1w.jpg",
   },
   {
     id: "scary",
     name: "Scary",
     description: "Horror, dread, jump scares",
     prompt: "scary horror tense frightening creepy",
+    backdropPath: "/gJbTXKNTL6O7r7PzF6ZRkJGBlPp.jpg",
   },
   {
     id: "feel-good",
     name: "Feel-good",
     description: "Uplifting, hopeful, big heart",
     prompt: "feel-good uplifting hopeful wholesome",
+    backdropPath: "/rQaHA74pevnGsxcKGaoZVGWe9TC.jpg",
   },
   {
     id: "mind-bending",
     name: "Mind-bending",
     description: "Twists, puzzles, reality slips",
     prompt: "mind-bending twisty sci-fi puzzle surreal",
+    backdropPath: "/8ZTVqvKDQ8emSGUEMjsS4yHAwrp.jpg",
   },
   {
     id: "epic",
     name: "Epic",
     description: "Scale, spectacle, world-building",
     prompt: "epic spectacular adventure grand world-building",
+    backdropPath: "/oiwc338EoBgS4sEI2ixAny4KQKg.jpg",
   },
   {
     id: "cozy-mystery",
     name: "Mystery",
     description: "Clues, secrets, who-did-it",
     prompt: "mystery detective clues secrets investigation",
+    backdropPath: "/4HWAQu28e2yaWrtupFPGFkdNU7V.jpg",
   },
 ];
 
-/** Static swipe decks so onboarding works with no API keys. */
+/** Static swipe decks with current TMDB poster paths when the live API is unavailable. */
 export const FALLBACK_MOVIES: TitleCard[] = [
   {
     tmdbId: 693134,
@@ -72,7 +102,7 @@ export const FALLBACK_MOVIES: TitleCard[] = [
     year: 2024,
     overview: "Paul Atreides unites with the Fremen to wage war against House Harkonnen.",
     genres: ["Science Fiction", "Adventure"],
-    posterPath: "/8b8R8l88Qje9dn9OE8PY05Nxl1X.jpg",
+    posterPath: "/6izwz7rsy95ARzTR3poZ8H6c5pp.jpg",
     backdropPath: "/xOMo8BRK7PfcJv9JCnx7s5hj0PX.jpg",
     voteAverage: 8.1,
   },
@@ -105,7 +135,7 @@ export const FALLBACK_MOVIES: TitleCard[] = [
     year: 2022,
     overview: "An exhausted laundromat owner is swept into a chaotic multiverse.",
     genres: ["Action", "Adventure", "Science Fiction"],
-    posterPath: "/w3LxiVYdWWRvEVdn5RYq6jIqkb1.jpg",
+    posterPath: "/u68AjlvlutfEIcpmbYpKcdi09ut.jpg",
     backdropPath: "/uOzO6BpkCCBSD2UUI38KYPOsxwO.jpg",
     voteAverage: 7.8,
   },
@@ -116,7 +146,7 @@ export const FALLBACK_MOVIES: TitleCard[] = [
     year: 2022,
     overview: "Batman uncovers corruption in Gotham while pursuing the Riddler.",
     genres: ["Crime", "Mystery", "Action"],
-    posterPath: "/74xTEgt7R36FbrdmRih3olXxDBg.jpg",
+    posterPath: "/74xTEgt7R36Fpooo50r9T25onhq.jpg",
     backdropPath: "/b0PlSFdDwbyK0cf5RxwDpaOJQvQ.jpg",
     voteAverage: 7.7,
   },
@@ -149,7 +179,7 @@ export const FALLBACK_MOVIES: TitleCard[] = [
     year: 2014,
     overview: "Explorers travel through a wormhole in search of a new home.",
     genres: ["Science Fiction", "Drama", "Adventure"],
-    posterPath: "/gEU2QniFS6lPKThQgC4GGhL8D2.jpg",
+    posterPath: "/yQvGrMoipbRoddT0ZR8tPoR7NfX.jpg",
     backdropPath: "/xJHokMbljvjADYdit5fK5VQsXEG.jpg",
     voteAverage: 8.4,
   },
@@ -182,7 +212,7 @@ export const FALLBACK_MOVIES: TitleCard[] = [
     year: 2015,
     overview: "In a post-apocalyptic wasteland, Max helps Furiosa flee a tyrant.",
     genres: ["Action", "Adventure", "Science Fiction"],
-    posterPath: "/8tZYtuWezp8JbcsvHYO0O46tFbo.jpg",
+    posterPath: "/ulcAi4dKpAjHwYGS08vNyx9H6I9.jpg",
     backdropPath: "/tbhdm8UJAb4ViCTsulYFL3lxMCd.jpg",
     voteAverage: 7.6,
   },
@@ -193,7 +223,7 @@ export const FALLBACK_MOVIES: TitleCard[] = [
     year: 2023,
     overview: "Bella Baxter’s adventures after being brought back to life.",
     genres: ["Science Fiction", "Romance", "Comedy"],
-    posterPath: "/kCGlIMHnOm8JPXpjE5XtdgKO7qj.jpg",
+    posterPath: "/kCGlIMHnOm8JPXq3rXM6c5wMxcT.jpg",
     backdropPath: "/bQS43HSLZzMjZKHHtb2skzHlUXm.jpg",
     voteAverage: 7.7,
   },
@@ -207,7 +237,7 @@ export const FALLBACK_SHOWS: TitleCard[] = [
     year: 2008,
     overview: "A chemistry teacher turns to making meth after a cancer diagnosis.",
     genres: ["Crime", "Drama"],
-    posterPath: "/ztkUQFLlC19CCMYHW9o1zWhJRNq.jpg",
+    posterPath: "/anFx9aTOOYqgS3v7x3R84Kz67ly.jpg",
     backdropPath: "/tsRy63Mu5cu8etL1X7ZLyf7UP1M.jpg",
     voteAverage: 8.9,
   },
@@ -229,7 +259,7 @@ export const FALLBACK_SHOWS: TitleCard[] = [
     year: 2016,
     overview: "Kids in Hawkins uncover government secrets and a parallel world.",
     genres: ["Sci-Fi & Fantasy", "Mystery", "Drama"],
-    posterPath: "/49WJfeN0moxb9IPfGn8AIqMGskD.jpg",
+    posterPath: "/uOOtwVbSr4QDjAGIifLDwpb2Pdl.jpg",
     backdropPath: "/56v2KjBlU4XaOv9rVYEQypGROQ.jpg",
     voteAverage: 8.6,
   },
@@ -240,7 +270,7 @@ export const FALLBACK_SHOWS: TitleCard[] = [
     year: 2005,
     overview: "A mockumentary on a group of office workers.",
     genres: ["Comedy"],
-    posterPath: "/7DJKHzCYEnqtQtdH1cgfTn7D5qp.jpg",
+    posterPath: "/7DJKHzAi83BmQrWLrYYOqcoKfhR.jpg",
     backdropPath: "/m3tdSyl11fszKmlL7wqAmlzQQfN.jpg",
     voteAverage: 8.7,
   },
@@ -251,7 +281,7 @@ export const FALLBACK_SHOWS: TitleCard[] = [
     year: 2018,
     overview: "The Roy family fights for control of a global media empire.",
     genres: ["Drama"],
-    posterPath: "/7HW47XbkNQ5fiwQFYGWbzTm1TB0.jpg",
+    posterPath: "/z0XiwdrCQ9yVIr4O0pxzaAYRxdW.jpg",
     backdropPath: "/4Xzz2e7uXbZLhFgxUsw3QslEMz9.jpg",
     voteAverage: 8.5,
   },
@@ -262,7 +292,7 @@ export const FALLBACK_SHOWS: TitleCard[] = [
     year: 2023,
     overview: "Joel and Ellie cross a post-pandemic United States.",
     genres: ["Drama", "Sci-Fi & Fantasy"],
-    posterPath: "/uKvVjOkN6QLgmI2AdjaTZN0je2.jpg",
+    posterPath: "/dmo6TYuuJgaYinXBPjrgG9mB5od.jpg",
     backdropPath: "/uDgy6hyPd82im6ZLidk39Vh4fwX.jpg",
     voteAverage: 8.6,
   },
@@ -273,7 +303,7 @@ export const FALLBACK_SHOWS: TitleCard[] = [
     year: 2022,
     overview: "Office workers’ memories are split between work and home.",
     genres: ["Drama", "Mystery", "Sci-Fi & Fantasy"],
-    posterPath: "/lFf6LLrQjY0k4N1wVbIOvjBPrqN.jpg",
+    posterPath: "/pPHpeI2X1qEd1CS1SeyrdhZ4qnT.jpg",
     backdropPath: "/4G03AzcR9oUEuk2YJ6R5YddNOhD.jpg",
     voteAverage: 8.5,
   },
@@ -284,7 +314,7 @@ export const FALLBACK_SHOWS: TitleCard[] = [
     year: 2020,
     overview: "An American football coach takes a job with a struggling UK soccer team.",
     genres: ["Comedy", "Drama"],
-    posterPath: "/5fhZdwv1E0Xq0nE4KqQvQkD2kHh.jpg",
+    posterPath: "/uRHsiw1wLxPHFXkkv4Ix1s0O6f4.jpg",
     backdropPath: "/wXNihLltNtYp5fw2ZgOXtLPqUv1.jpg",
     voteAverage: 8.4,
   },
@@ -295,7 +325,7 @@ export const FALLBACK_SHOWS: TitleCard[] = [
     year: 2021,
     overview: "Champions of two cities collide in a story of power and sisterhood.",
     genres: ["Animation", "Sci-Fi & Fantasy", "Action & Adventure"],
-    posterPath: "/fqldf2t8ztc9aiwn3k6mlX3tvWG.jpg",
+    posterPath: "/fqldf2t8ztc9aiwn3k6mlX3tvRT.jpg",
     backdropPath: "/q8eejQcg1bAqImEV8hcMNOIOCcv.jpg",
     voteAverage: 8.7,
   },
@@ -306,7 +336,7 @@ export const FALLBACK_SHOWS: TitleCard[] = [
     year: 2019,
     overview: "A lone bounty hunter in the outer reaches of the galaxy.",
     genres: ["Sci-Fi & Fantasy", "Action & Adventure"],
-    posterPath: "/eU1i6eHXlzMOlEq0ku1Rzq7Y4wA.jpg",
+    posterPath: "/sWgBv7LV2PRoQgkxwlibdGXKz1S.jpg",
     backdropPath: "/o7qi2v4uWQ8bZ1tW3KI0Ztn2epk.jpg",
     voteAverage: 8.5,
   },
@@ -317,7 +347,7 @@ export const FALLBACK_SHOWS: TitleCard[] = [
     year: 2021,
     overview: "Guests and staff at a luxury resort collide over a week’s vacation.",
     genres: ["Comedy", "Drama", "Mystery"],
-    posterPath: "/gH5iSss8oBpdw9PjjVwNkVL0nFc.jpg",
+    posterPath: "/gbSaK9v1CbcYH1ISgbM7XObD2dW.jpg",
     backdropPath: "/dY8yZm5Y8Q2p3aB2k3S0nQvQe5E.jpg",
     voteAverage: 7.9,
   },
@@ -328,7 +358,7 @@ export const FALLBACK_SHOWS: TitleCard[] = [
     year: 2021,
     overview: "The God of Mischief steps out of his brother’s shadow.",
     genres: ["Drama", "Sci-Fi & Fantasy"],
-    posterPath: "/kEl2t3OhXc3ZbZSWByWUwSDSJiX.jpg",
+    posterPath: "/kEl2t3OhXc3Zb9FBh1AuYzRTgZp.jpg",
     backdropPath: "/q3jHCbvRVlFpjNP7ZkMdKw9d3K8.jpg",
     voteAverage: 8.2,
   },

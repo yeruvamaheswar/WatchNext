@@ -1,5 +1,5 @@
 import { createBrowserClient } from "@supabase/ssr";
-import { getPublicEnv } from "@/lib/env";
+import { getPublicEnv } from "@/lib/public-env";
 import { timedFetch } from "@/lib/timed-fetch";
 
 export function createBrowserSupabase() {

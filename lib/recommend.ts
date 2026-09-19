@@ -1,8 +1,10 @@
 import { ConfigError } from "@/lib/config-error";
 import { blendVectors, embedText, meanVectors } from "@/lib/embeddings";
+import { getServerEnv } from "@/lib/env";
 import { getOpenAI, openaiModels } from "@/lib/openai";
 import { createAdminSupabase, tryCreateAdminSupabase } from "@/lib/supabase/admin";
 import { VIBE_CARDS } from "@/lib/onboarding-catalog";
+import { fetchPosterPath } from "@/lib/tmdb";
 import { withTimeout } from "@/lib/with-timeout";
 import type {
   ExtractedIntent,
@@ -190,7 +192,25 @@ async function llmPick(
       ? `Try ${titles[0].name}${titles[0].year ? ` (${titles[0].year})` : ""}.`
       : "I could not find a match in the local catalog.");
 
-  return { titles, spokenPitch };
+  return { titles: await withTmdbPosters(titles), spokenPitch };
+}
+
+async function withTmdbPosters(titles: SuggestedTitle[]): Promise<SuggestedTitle[]> {
+  if (!getServerEnv().tmdbKey) return titles;
+  return Promise.all(
+    titles.map(async (title) => {
+      if (title.posterPath) return title;
+      try {
+        const posterPath = await withTimeout(
+          fetchPosterPath(title.mediaType, title.tmdbId),
+          1500
+        );
+        return posterPath ? { ...title, posterPath } : title;
+      } catch {
+        return title;
+      }
+    })
+  );
 }
 
 function toSuggested(row: MatchRow, reason: string): SuggestedTitle {

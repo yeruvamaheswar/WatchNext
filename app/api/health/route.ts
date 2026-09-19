@@ -1,4 +1,5 @@
-import { getServerEnv, getPublicEnv } from "@/lib/env";
+import { getServerEnv } from "@/lib/env";
+import { getPublicEnv } from "@/lib/public-env";
 import { tryCreateAdminSupabase } from "@/lib/supabase/admin";
 import { withTimeout } from "@/lib/with-timeout";
 import type { HealthStatus } from "@/lib/types";
@@ -13,11 +14,19 @@ export async function GET() {
 
   if (!env.openaiKey) {
     missing.push("OPENAI_API_KEY");
-    hints.push("Recommendations, ingest embeddings, STT, and TTS need OPENAI_API_KEY in .env.local.");
+    hints.push(
+      env.openaiKeyBlankInFile
+        ? "OPENAI_API_KEY is listed in .env.local but the value is blank. Paste the key on that same line, save the file, then refresh."
+        : "Recommendations, ingest embeddings, STT, and TTS need OPENAI_API_KEY in .env.local."
+    );
   }
   if (!env.tmdbKey) {
     missing.push("TMDB_API_KEY");
-    hints.push("Catalog ingest needs TMDB_API_KEY.");
+    hints.push(
+      env.tmdbKeyBlankInFile
+        ? "TMDB_API_KEY is listed in .env.local but the value is blank. Paste the key on that same line, save the file, then refresh."
+        : "Catalog ingest needs TMDB_API_KEY."
+    );
   }
   if (!pub.hasSupabase) {
     missing.push("NEXT_PUBLIC_SUPABASE_URL / ANON KEY");

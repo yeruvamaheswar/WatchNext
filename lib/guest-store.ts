@@ -1,6 +1,20 @@
 const KEY = "watchnext-guest-v1";
 
-import type { GuestLike, GuestState } from "@/lib/types";
+import type { GuestLike, GuestState, SeenOnboarding } from "@/lib/types";
+
+const emptySeen = (): SeenOnboarding => ({
+  movieIds: [],
+  showIds: [],
+  vibeIds: [],
+});
+
+function uniqueNumbers(ids: number[], extra: number[], keep = 60) {
+  return [...new Set([...ids, ...extra])].slice(-keep);
+}
+
+function uniqueStrings(ids: string[], extra: string[], keep = 30) {
+  return [...new Set([...ids, ...extra])].slice(-keep);
+}
 
 function randomId() {
   if (typeof crypto !== "undefined" && crypto.randomUUID) {
@@ -16,6 +30,7 @@ export const GUEST_SSR: GuestState = {
   likes: [],
   likedVibes: [],
   dislikedVibes: [],
+  seenOnboarding: emptySeen(),
 };
 
 export function emptyGuest(): GuestState {
@@ -26,6 +41,7 @@ export function emptyGuest(): GuestState {
     likes: [],
     likedVibes: [],
     dislikedVibes: [],
+    seenOnboarding: emptySeen(),
   };
 }
 
@@ -46,6 +62,11 @@ export function loadGuest(): GuestState {
       likes: parsed.likes ?? [],
       likedVibes: parsed.likedVibes ?? [],
       dislikedVibes: parsed.dislikedVibes ?? [],
+      seenOnboarding: {
+        movieIds: parsed.seenOnboarding?.movieIds ?? [],
+        showIds: parsed.seenOnboarding?.showIds ?? [],
+        vibeIds: parsed.seenOnboarding?.vibeIds ?? [],
+      },
     };
   } catch {
     const fresh = emptyGuest();
@@ -62,6 +83,18 @@ export function saveGuest(state: GuestState) {
 export function clearGuest() {
   if (typeof window === "undefined") return;
   localStorage.removeItem(KEY);
+}
+
+export function rememberSeenOnboarding(
+  seen: SeenOnboarding | undefined,
+  next: Partial<SeenOnboarding>
+): SeenOnboarding {
+  const current = seen ?? emptySeen();
+  return {
+    movieIds: uniqueNumbers(current.movieIds, next.movieIds ?? []),
+    showIds: uniqueNumbers(current.showIds, next.showIds ?? []),
+    vibeIds: uniqueStrings(current.vibeIds, next.vibeIds ?? []),
+  };
 }
 
 export function upsertLike(likes: GuestLike[], next: GuestLike) {

@@ -1,15 +1,13 @@
 "use client";
 
-import { useRef, useState } from "react";
-import { Heart, X } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
-import { posterUrl } from "@/lib/poster";
+import { backdropUrl, posterUrl } from "@/lib/poster";
 import type { TitleCard } from "@/lib/types";
 
 type Item =
   | { kind: "title"; card: TitleCard }
-  | { kind: "vibe"; id: string; name: string; description: string };
+  | { kind: "vibe"; id: string; name: string; description: string; backdropPath?: string | null };
 
 export function SwipeDeck({
   items,
@@ -26,52 +24,86 @@ export function SwipeDeck({
   const [dx, setDx] = useState(0);
   const [dragging, setDragging] = useState(false);
   const startX = useRef(0);
+  const draggingRef = useRef(false);
+  const indexRef = useRef(0);
+  const itemsRef = useRef(items);
+  const emptiedRef = useRef(false);
+  const callbacksRef = useRef({ onLike, onDislike, onEmpty });
 
-  const current = items[index];
-  const done = index >= items.length;
+  itemsRef.current = items;
+  callbacksRef.current = { onLike, onDislike, onEmpty };
+  indexRef.current = index;
 
-  function finish(dir: "like" | "dislike") {
+  function emptyOnce() {
+    if (emptiedRef.current) return;
+    emptiedRef.current = true;
+    callbacksRef.current.onEmpty();
+  }
+
+  function commit(dir: "like" | "dislike") {
+    const current = itemsRef.current[indexRef.current];
+    draggingRef.current = false;
+    setDragging(false);
+    setDx(0);
     if (!current) {
-      onEmpty();
+      emptyOnce();
       return;
     }
-    if (dir === "like") onLike(current);
-    else onDislike(current);
-    setDx(0);
-    setDragging(false);
-    const next = index + 1;
-    setIndex(next);
-    if (next >= items.length) onEmpty();
-  }
-
-  function onPointerDown(e: React.PointerEvent) {
-    startX.current = e.clientX;
-    setDragging(true);
-    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-  }
-  function onPointerMove(e: React.PointerEvent) {
-    if (!dragging) return;
-    setDx(e.clientX - startX.current);
-  }
-  function onPointerUp(e: React.PointerEvent) {
     try {
-      (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+      if (dir === "like") callbacksRef.current.onLike(current);
+      else callbacksRef.current.onDislike(current);
     } catch {
-      // Already released.
+      // Keep the deck moving even if taste persistence throws.
     }
-    if (!dragging) return;
-    if (dx > 90) finish("like");
-    else if (dx < -90) finish("dislike");
-    else {
-      setDx(0);
-      setDragging(false);
-    }
+    const next = indexRef.current + 1;
+    indexRef.current = next;
+    setIndex(next);
+    if (next >= itemsRef.current.length) emptyOnce();
   }
 
-  if (done || !current) {
+  useEffect(() => {
+    if (items.length === 0 || index >= items.length) emptyOnce();
+  }, [index, items.length]);
+
+  useEffect(() => {
+    function move(event: PointerEvent) {
+      if (!draggingRef.current) return;
+      setDx(event.clientX - startX.current);
+    }
+    function up(event: PointerEvent) {
+      if (!draggingRef.current) return;
+      const currentDx = event.clientX - startX.current;
+      if (currentDx > 72) commit("like");
+      else if (currentDx < -72) commit("dislike");
+      else {
+        draggingRef.current = false;
+        setDragging(false);
+        setDx(0);
+      }
+    }
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", up);
+    return () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", up);
+    };
+  }, []);
+
+  function onPointerDown(event: React.PointerEvent) {
+    if (event.pointerType === "mouse" && event.button !== 0) return;
+    event.preventDefault();
+    startX.current = event.clientX;
+    draggingRef.current = true;
+    setDragging(true);
+  }
+
+  const current = items[index];
+  if (!current) {
     return (
       <div className="flex min-h-[420px] items-center justify-center text-muted-foreground">
-        Deck complete
+        {items.length ? "Deck complete" : "Loading titles…"}
       </div>
     );
   }
@@ -85,14 +117,15 @@ export function SwipeDeck({
       <p className="text-xs tracking-[0.2em] text-muted-foreground uppercase">
         {index + 1} / {items.length}
       </p>
-      <div className="relative h-[min(42dvh,320px)] w-full max-w-[280px] overflow-hidden">
+      <div className="relative h-[min(58dvh,480px)] w-full max-w-[320px] overflow-visible">
         {items.slice(index, index + 3).map((item, i) => {
           const isTop = i === 0;
           return (
             <article
               key={item.kind === "title" ? `${item.card.mediaType}-${item.card.tmdbId}` : item.id}
+              data-testid={isTop ? "swipe-card" : undefined}
               className={cn(
-                "absolute inset-0 touch-none overflow-hidden rounded-3xl border border-white/10 bg-card shadow-2xl",
+                "absolute inset-0 touch-none overflow-hidden rounded-3xl border border-white/10 bg-card shadow-2xl select-none",
                 !isTop && "pointer-events-none"
               )}
               style={
@@ -101,6 +134,7 @@ export function SwipeDeck({
                       transform: `translateX(${dx}px) rotate(${rotate}deg)`,
                       transition: dragging ? "none" : "transform 180ms ease",
                       zIndex: 10 - i,
+                      touchAction: "none",
                     }
                   : {
                       transform: `scale(${1 - i * 0.04}) translateY(${i * 10}px)`,
@@ -108,14 +142,15 @@ export function SwipeDeck({
                     }
               }
               onPointerDown={isTop ? onPointerDown : undefined}
-              onPointerMove={isTop ? onPointerMove : undefined}
-              onPointerUp={isTop ? onPointerUp : undefined}
-              onPointerCancel={isTop ? onPointerUp : undefined}
             >
               {item.kind === "title" ? (
                 <TitleFace card={item.card} />
               ) : (
-                <VibeFace name={item.name} description={item.description} />
+                <VibeFace
+                  name={item.name}
+                  description={item.description}
+                  backdropPath={item.backdropPath}
+                />
               )}
               {isTop && (
                 <>
@@ -137,28 +172,7 @@ export function SwipeDeck({
           );
         })}
       </div>
-      <div className="flex items-center gap-6">
-        <Button
-          type="button"
-          variant="outline"
-          size="icon-lg"
-          className="size-14 rounded-full border-rose-400/40 text-rose-300"
-          onClick={() => finish("dislike")}
-          aria-label="Dislike, swipe left"
-        >
-          <X className="size-6" />
-        </Button>
-        <Button
-          type="button"
-          size="icon-lg"
-          className="size-14 rounded-full bg-violet-500 text-white hover:bg-violet-400"
-          onClick={() => finish("like")}
-          aria-label="Like, swipe right"
-        >
-          <Heart className="size-6 fill-current" />
-        </Button>
-      </div>
-      <p className="text-xs text-muted-foreground">Right = like · Left = dislike</p>
+      <p className="text-xs text-muted-foreground">Swipe right to like · left to dislike</p>
     </div>
   );
 }
@@ -166,6 +180,8 @@ export function SwipeDeck({
 function TitleFace({ card }: { card: TitleCard }) {
   const src = posterUrl(card.posterPath, "w500");
   const [broken, setBroken] = useState(false);
+  const name = card.name || "Untitled";
+  const genres = Array.isArray(card.genres) ? card.genres : [];
   return (
     <div className="relative h-full bg-[radial-gradient(circle_at_30%_20%,#7c3aed,transparent_40%),#1a0b2e]">
       {!broken && src ? (
@@ -179,28 +195,51 @@ function TitleFace({ card }: { card: TitleCard }) {
         />
       ) : (
         <div className="flex h-full flex-col justify-center px-5">
-          <p className="text-6xl font-semibold text-white/90">{card.name.slice(0, 1)}</p>
+          <p className="text-6xl font-semibold text-white/90">{name.slice(0, 1)}</p>
         </div>
       )}
       <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/70 to-transparent p-4 pt-24">
         <h3 className="text-lg font-semibold text-white">
-          {card.name}
+          {name}
           {card.year ? <span className="text-white/60"> · {card.year}</span> : null}
         </h3>
         <p className="mt-1 line-clamp-2 text-xs text-white/70">
-          {card.genres.slice(0, 3).join(" · ")}
+          {genres.slice(0, 3).join(" · ")}
         </p>
       </div>
     </div>
   );
 }
 
-function VibeFace({ name, description }: { name: string; description: string }) {
+function VibeFace({
+  name,
+  description,
+  backdropPath,
+}: {
+  name: string;
+  description: string;
+  backdropPath?: string | null;
+}) {
+  const src = backdropUrl(backdropPath);
+  const [broken, setBroken] = useState(false);
   return (
-    <div className="flex h-full flex-col justify-end bg-[radial-gradient(circle_at_30%_20%,#7c3aed,transparent_40%),radial-gradient(circle_at_80%_80%,#4c1d95,transparent_45%),#12061f] p-6">
-      <p className="text-xs tracking-[0.3em] text-violet-200/70 uppercase">Vibe</p>
-      <h3 className="mt-3 text-4xl font-semibold text-white">{name}</h3>
-      <p className="mt-3 text-sm text-violet-100/80">{description}</p>
+    <div className="relative flex h-full flex-col justify-end bg-[radial-gradient(circle_at_30%_20%,#7c3aed,transparent_40%),radial-gradient(circle_at_80%_80%,#4c1d95,transparent_45%),#12061f]">
+      {!broken && src ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={src}
+          alt=""
+          className="absolute inset-0 h-full w-full object-cover"
+          draggable={false}
+          onError={() => setBroken(true)}
+        />
+      ) : null}
+      <div className="absolute inset-0 bg-gradient-to-t from-[#12061f] via-[#12061f]/75 to-black/20" />
+      <div className="relative p-6">
+        <p className="text-xs tracking-[0.3em] text-violet-200/80 uppercase">Vibe</p>
+        <h3 className="mt-3 text-4xl font-semibold text-white">{name}</h3>
+        <p className="mt-3 text-sm text-violet-100/85">{description}</p>
+      </div>
     </div>
   );
 }
