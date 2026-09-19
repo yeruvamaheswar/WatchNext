@@ -6,6 +6,7 @@ import { HealthBanner } from "@/components/health-banner";
 import { PosterTiles } from "@/components/poster-tiles";
 import { Button } from "@/components/ui/button";
 import { useWatchNext } from "@/hooks/use-watchnext";
+import { primaryActionClass } from "@/lib/button-styles";
 import type { RecommendResult } from "@/lib/types";
 
 export default function HomePage() {
@@ -71,7 +72,7 @@ export default function HomePage() {
       ) : null}
       <Button
         type="button"
-        className="h-14 rounded-full bg-violet-500 text-base text-white hover:bg-violet-400"
+        className={`w-full md:max-w-xs ${primaryActionClass}`}
         onClick={() => void recommend()}
         disabled={loading}
       >

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useWatchNext } from "@/hooks/use-watchnext";
+import { primaryActionClass } from "@/lib/button-styles";
 
 export default function UserPage() {
   const { guest, isGuest, setDisplayName } = useWatchNext();
@@ -31,7 +32,7 @@ export default function UserPage() {
       </div>
       <Button
         type="button"
-        className="h-12 rounded-full"
+        className={`w-full ${primaryActionClass}`}
         onClick={async () => {
           await setDisplayName(name);
           toast.success("Name saved.");

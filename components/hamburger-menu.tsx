@@ -99,7 +99,7 @@ export function HamburgerMenu() {
         type="button"
         variant="ghost"
         size="icon-lg"
-        className="relative z-[90] size-11 rounded-full"
+        className="relative z-[90] size-11 rounded-sm"
         aria-label={open ? "Close menu" : "Open menu"}
         aria-expanded={open}
         data-testid="open-menu"
