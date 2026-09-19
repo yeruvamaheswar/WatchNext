@@ -1,19 +1,32 @@
 import { existsSync, readFileSync } from "node:fs";
+import { createClient } from "@supabase/supabase-js";
 import { embedTexts, titleEmbedText } from "../lib/embeddings";
 import {
   applyGitHubEnvAliases,
   getServerEnv,
   requireOpenAI,
+  requireSupabaseAdmin,
   requireTmdb,
 } from "../lib/env";
 import { openaiModels } from "../lib/openai";
-import { createAdminSupabase } from "../lib/supabase/admin";
+import { timedFetch } from "../lib/timed-fetch";
 import {
   enrichTitle,
   fetchPopular,
   mapPool,
   type TmdbTitle,
 } from "../lib/tmdb";
+
+/** Hosted upserts of embeddings need more than the app’s 2.5s UI timeout. */
+function createIngestSupabase() {
+  const env = requireSupabaseAdmin();
+  const key = env.supabaseService || env.supabaseAnon;
+  return createClient(env.supabaseUrl, key, {
+    auth: { persistSession: false, autoRefreshToken: false },
+    db: { retry: false },
+    global: { fetch: timedFetch(60_000) },
+  });
+}
 
 function loadEnvFile(path: string) {
   if (!existsSync(path)) return;
@@ -124,7 +137,7 @@ async function main() {
         }
       });
 
-  const supabase = createAdminSupabase();
+  const supabase = createIngestSupabase();
   const upserts = enriched.map((t) => ({
     tmdb_id: t.tmdbId,
     media_type: t.mediaType,

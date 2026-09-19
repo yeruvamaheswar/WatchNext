@@ -1,4 +1,4 @@
-/** Bound fetch so unreachable local Supabase fails fast instead of hanging the UI. */
+/** Bound fetch so unreachable Supabase fails instead of hanging the UI. */
 export function timedFetch(timeoutMs = 2500): typeof fetch {
   return async (input, init) => {
     const controller = new AbortController();

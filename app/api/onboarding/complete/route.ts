@@ -1,6 +1,8 @@
+import { getServerEnv } from "@/lib/env";
 import { handleRouteError, jsonError } from "@/lib/errors";
 import { recomputeTaste } from "@/lib/taste";
 import { tryCreateAdminSupabase } from "@/lib/supabase/admin";
+import { supabaseFetchTimeoutMs } from "@/lib/supabase/timeout";
 import { withTimeout } from "@/lib/with-timeout";
 import type { GuestLike } from "@/lib/types";
 
@@ -24,7 +26,7 @@ export async function POST(request: Request) {
       return Response.json({
         ok: true,
         persisted: false,
-        hint: "Taste is saved on this device. Start local Supabase and set keys to persist vectors.",
+        hint: "Taste is saved on this device. Set hosted Supabase keys to persist vectors.",
       });
     }
 
@@ -37,7 +39,7 @@ export async function POST(request: Request) {
           displayName: body.displayName,
           isGuest: body.isGuest,
         }),
-        2500
+        supabaseFetchTimeoutMs(getServerEnv().supabaseUrl) + 10_000
       );
       return Response.json({ ok: true, persisted: true, ...result });
     } catch (err) {

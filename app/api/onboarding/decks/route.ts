@@ -8,6 +8,7 @@ import {
 import { getServerEnv } from "@/lib/env";
 import { cardsWithPosters, fetchOnboardingPool } from "@/lib/tmdb";
 import { tryCreateAdminSupabase } from "@/lib/supabase/admin";
+import { supabaseFetchTimeoutMs } from "@/lib/supabase/timeout";
 import { withTimeout } from "@/lib/with-timeout";
 import type { TitleCard } from "@/lib/types";
 
@@ -106,7 +107,7 @@ export async function GET(request: Request) {
             .order("popularity", { ascending: false })
             .limit(POOL_SIZE),
         ]),
-        2000
+        supabaseFetchTimeoutMs(getServerEnv().supabaseUrl)
       );
       if (movieResult.data?.length) moviePool = movieResult.data.map(mapRow);
       if (showResult.data?.length) showPool = showResult.data.map(mapRow);

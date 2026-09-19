@@ -20,6 +20,7 @@ import {
   upsertLike,
 } from "@/lib/guest-store";
 import { getPublicEnv } from "@/lib/public-env";
+import { supabaseFetchTimeoutMs } from "@/lib/supabase/timeout";
 import { abortableFetch, withTimeout } from "@/lib/with-timeout";
 import type { GuestLike, GuestState } from "@/lib/types";
 
@@ -54,7 +55,9 @@ export function WatchNextProvider({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false);
   const [guest, setGuestState] = useState<GuestState>(GUEST_SSR);
   const [session, setSession] = useState<Session | null>(null);
-  const supabaseConfigured = getPublicEnv().hasSupabase;
+  const publicEnv = getPublicEnv();
+  const supabaseConfigured = publicEnv.hasSupabase;
+  const supabaseTimeout = supabaseFetchTimeoutMs(publicEnv.supabaseUrl);
 
   const setGuest = useCallback((next: GuestState) => {
     setGuestState(next);
@@ -80,13 +83,16 @@ export function WatchNextProvider({ children }: { children: React.ReactNode }) {
     if (supabase) {
       void (async () => {
         try {
-          const { data } = await withTimeout(supabase.auth.getSession(), 2000);
+          const { data } = await withTimeout(supabase.auth.getSession(), supabaseTimeout);
           if (cancelled) return;
           if (data.session) {
             setSession(data.session);
             return;
           }
-          const anon = await withTimeout(supabase.auth.signInAnonymously(), 2000);
+          const anon = await withTimeout(
+            supabase.auth.signInAnonymously(),
+            supabaseTimeout
+          );
           if (!cancelled && !anon.error && anon.data.session) {
             setSession(anon.data.session);
           }
@@ -145,13 +151,13 @@ export function WatchNextProvider({ children }: { children: React.ReactNode }) {
               likedVibes: state.likedVibes,
             }),
           },
-          2500
+          supabaseTimeout + 10_000
         );
       } catch {
         // Local guest taste still counts.
       }
     },
-    []
+    [supabaseTimeout]
   );
 
   const completeOnboarding = useCallback(async () => {
@@ -191,10 +197,10 @@ export function WatchNextProvider({ children }: { children: React.ReactNode }) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ userId, displayName: trimmed }),
         },
-        2500
+        supabaseTimeout
       ).catch(() => {});
     },
-    [guest, setGuest, userId]
+    [guest, setGuest, userId, supabaseTimeout]
   );
 
   const signIn = useCallback(async (email: string, password: string) => {
@@ -202,10 +208,10 @@ export function WatchNextProvider({ children }: { children: React.ReactNode }) {
     if (!supabase) throw new Error("Supabase is not configured.");
     const { error } = await withTimeout(
       supabase.auth.signInWithPassword({ email, password }),
-      4000
+      supabaseTimeout
     );
     if (error) throw error;
-  }, []);
+  }, [supabaseTimeout]);
 
   const signUp = useCallback(async (email: string, password: string) => {
     const supabase = createBrowserSupabase();
@@ -216,25 +222,25 @@ export function WatchNextProvider({ children }: { children: React.ReactNode }) {
         password,
         options: { data: { display_name: guest.displayName } },
       }),
-      4000
+      supabaseTimeout
     );
     if (error) throw error;
-  }, [guest.displayName]);
+  }, [guest.displayName, supabaseTimeout]);
 
   const signOut = useCallback(async () => {
     const supabase = createBrowserSupabase();
     try {
-      if (supabase) await withTimeout(supabase.auth.signOut(), 2000);
+      if (supabase) await withTimeout(supabase.auth.signOut(), supabaseTimeout);
     } catch {
       // Local session still clears.
     }
     setSession(null);
-  }, []);
+  }, [supabaseTimeout]);
 
   const deleteLocalSession = useCallback(async () => {
     const supabase = createBrowserSupabase();
     try {
-      if (supabase) await withTimeout(supabase.auth.signOut(), 2000);
+      if (supabase) await withTimeout(supabase.auth.signOut(), supabaseTimeout);
     } catch {
       // Ignore unreachable Auth.
     }
@@ -243,27 +249,27 @@ export function WatchNextProvider({ children }: { children: React.ReactNode }) {
     setGuestState(fresh);
     saveGuest(fresh);
     setSession(null);
-  }, []);
+  }, [supabaseTimeout]);
 
   const continueAsGuest = useCallback(async () => {
     const supabase = createBrowserSupabase();
     setSession(null);
     if (!supabase) return;
     try {
-      await withTimeout(supabase.auth.signOut(), 2000);
+      await withTimeout(supabase.auth.signOut(), supabaseTimeout);
     } catch {
       // Already local.
     }
     try {
       const { data, error } = await withTimeout(
         supabase.auth.signInAnonymously(),
-        2000
+        supabaseTimeout
       );
       if (!error && data.session) setSession(data.session);
     } catch {
       // Stay on the local guest profile.
     }
-  }, []);
+  }, [supabaseTimeout]);
 
   const value = useMemo(
     () => ({

@@ -54,7 +54,7 @@ export default function HomePage() {
         <p className="text-xs tracking-[0.25em] text-violet-300 uppercase">Home</p>
         <h1 className="mt-1 text-3xl font-semibold">What should I watch?</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          One tap. Taste from your swipes, ranked against the local catalog.
+          One tap. Taste from your swipes, ranked against the catalog.
         </p>
       </div>
       <HealthBanner />

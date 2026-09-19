@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { getPublicEnv } from "@/lib/public-env";
+import { supabaseFetchTimeoutMs } from "@/lib/supabase/timeout";
 import { abortableFetch } from "@/lib/with-timeout";
 import type { HealthStatus } from "@/lib/types";
 
@@ -9,7 +11,7 @@ export function useHealth() {
 
   useEffect(() => {
     let cancelled = false;
-    abortableFetch("/api/health", {}, 4000)
+    abortableFetch("/api/health", {}, supabaseFetchTimeoutMs(getPublicEnv().supabaseUrl))
       .then((r) => r.json())
       .then((data: HealthStatus) => {
         if (!cancelled) setHealth(data);
