@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Menu, SlidersHorizontal, UserRound, Settings, X } from "lucide-react";
+import { BrandLogo } from "@/components/brand-logo";
 import { Button } from "@/components/ui/button";
 import { useWatchNext } from "@/hooks/use-watchnext";
 
@@ -54,8 +55,8 @@ export function HamburgerMenu() {
               style={{ paddingTop: "max(1rem, env(safe-area-inset-top))" }}
             >
               <div className="flex items-start justify-between gap-3 px-5 pb-4">
-                <div>
-                  <p className="text-lg font-semibold">WatchNext</p>
+                <div className="min-w-0 space-y-1">
+                  <BrandLogo size="md" />
                   <p className="text-sm text-muted-foreground">
                     {guest.displayName} · {isGuest ? "Guest" : "Signed in"}
                   </p>

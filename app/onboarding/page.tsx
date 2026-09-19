@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { BrandLogo } from "@/components/brand-logo";
 import { SwipeDeck } from "@/components/swipe-deck";
 import { useWatchNext } from "@/hooks/use-watchnext";
 import {
@@ -122,6 +123,9 @@ export default function OnboardingPage() {
       className="mx-auto flex min-h-dvh max-w-lg flex-col px-4 pb-8"
       style={{ paddingTop: "max(1.5rem, env(safe-area-inset-top))" }}
     >
+      <header className="mb-5">
+        <BrandLogo />
+      </header>
       <div className="mb-4 flex gap-2">
         {STEPS.map((s, i) => (
           <span

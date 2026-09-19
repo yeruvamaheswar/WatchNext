@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { BottomTabs } from "@/components/bottom-tabs";
+import { BrandLogo } from "@/components/brand-logo";
 import { HamburgerMenu } from "@/components/hamburger-menu";
 import { useRoomUi } from "@/hooks/use-room-ui";
 import { APP_TABS } from "@/lib/nav";
@@ -23,7 +24,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div className="pointer-events-none absolute inset-0 bg-[#0c0614]/80 backdrop-blur-xl" />
           <div className="relative flex items-center gap-2">
             <HamburgerMenu />
-            <p className="text-sm font-medium tracking-wide">WatchNext</p>
+            <BrandLogo href="/home" />
             <nav className="ml-auto hidden items-center pr-3 md:flex">
               {APP_TABS.map((tab) => {
                 const current = pathname === tab.href;
