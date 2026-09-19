@@ -67,10 +67,11 @@ npx supabase stop
 
 ```bash
 npm run ingest
+# demo slice: npm run ingest -- --limit 10
 # optional: npm run ingest -- --pages 5 --quick
 ```
 
-`--quick` skips per-title keywords/cast calls. Default is 10 TMDB pages each of movies and TV (~400 titles).
+`--limit N` upserts and embeds exactly N titles (mixed movies + TV). `--quick` skips per-title keywords/cast calls. Default is 10 TMDB pages each of movies and TV (~400 titles). Embedding text is title + overview + tags (keywords and genres).
 
 ## Voice pipeline (Room)
 

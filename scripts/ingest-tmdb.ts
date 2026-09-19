@@ -6,6 +6,7 @@ import {
   requireOpenAI,
   requireTmdb,
 } from "../lib/env";
+import { openaiModels } from "../lib/openai";
 import { createAdminSupabase } from "../lib/supabase/admin";
 import {
   enrichTitle,
@@ -45,13 +46,45 @@ function argValue(flag: string, fallback: number) {
   return fallback;
 }
 
+function optionalArgValue(flag: string) {
+  const idx = process.argv.indexOf(flag);
+  if (idx >= 0 && process.argv[idx + 1]) {
+    const n = Number(process.argv[idx + 1]);
+    return Number.isFinite(n) && n > 0 ? Math.floor(n) : null;
+  }
+  return null;
+}
+
+/** Mix movies + TV so a small --limit is not all one media type. */
+function takeLimit(titles: TmdbTitle[], limit: number | null) {
+  if (!limit) return titles;
+  const movies = titles.filter((t) => t.mediaType === "movie");
+  const tv = titles.filter((t) => t.mediaType === "tv");
+  const movieN = Math.min(movies.length, Math.ceil(limit / 2));
+  const tvN = Math.min(tv.length, limit - movieN);
+  const picked = [...movies.slice(0, movieN), ...tv.slice(0, tvN)];
+  if (picked.length >= limit) return picked.slice(0, limit);
+  const seen = new Set(picked.map((t) => `${t.mediaType}:${t.tmdbId}`));
+  for (const t of titles) {
+    if (picked.length >= limit) break;
+    const key = `${t.mediaType}:${t.tmdbId}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    picked.push(t);
+  }
+  return picked.slice(0, limit);
+}
+
 async function main() {
   requireTmdb();
   requireOpenAI();
-  const pages = argValue("--pages", getServerEnv().ingestPages);
+  const limit = optionalArgValue("--limit");
+  const pages = argValue("--pages", limit ? 1 : getServerEnv().ingestPages);
   const skipEnrich = process.argv.includes("--quick");
   console.log(
-    `WatchNext ingest: ${pages} TMDB pages each of movies + TV${skipEnrich ? " (quick, no keywords/cast)" : ""}.`
+    `WatchNext ingest: ${pages} TMDB pages each of movies + TV${
+      limit ? `, limit ${limit}` : ""
+    }${skipEnrich ? " (quick, no keywords/cast)" : ""}.`
   );
   console.log(
     `Using ${aliasSources.openaiSource} and ${aliasSources.tmdbSource} (values not logged).`
@@ -66,9 +99,14 @@ async function main() {
     }
   }
 
-  const unique = [
-    ...new Map(collected.map((t) => [`${t.mediaType}:${t.tmdbId}`, t])).values(),
-  ];
+  const unique = takeLimit(
+    [
+      ...new Map(
+        collected.map((t) => [`${t.mediaType}:${t.tmdbId}`, t] as const)
+      ).values(),
+    ],
+    limit
+  );
   console.log(`Unique titles: ${unique.length}`);
 
   const enriched = skipEnrich
@@ -114,14 +152,22 @@ async function main() {
     console.log(`  upserted titles ${Math.min(i + 100, upserts.length)}/${upserts.length}`);
   }
 
-  const { data: stored, error: storedError } = await supabase
+  const wanted = new Set(unique.map((t) => `${t.mediaType}:${t.tmdbId}`));
+  const { data: storedAll, error: storedError } = await supabase
     .from("titles")
     .select(
       "id, tmdb_id, media_type, name, year, overview, tagline, genres, keywords, top_cast"
+    )
+    .in(
+      "tmdb_id",
+      unique.map((t) => t.tmdbId)
     );
   if (storedError) throw new Error(storedError.message);
+  const stored = (storedAll ?? []).filter((row) =>
+    wanted.has(`${row.media_type}:${row.tmdb_id}`)
+  );
 
-  const texts = (stored ?? []).map((row) =>
+  const texts = stored.map((row) =>
     titleEmbedText({
       name: row.name,
       year: row.year,
@@ -143,17 +189,12 @@ async function main() {
     console.log(`  embedded ${Math.min(i + 64, texts.length)}/${texts.length}`);
   }
 
-  const { data: modelRow } = await supabase
-    .from("title_embeddings")
-    .select("model")
-    .limit(1)
-    .maybeSingle();
-  const model = process.env.OPENAI_EMBEDDING_MODEL || "text-embedding-3-small";
+  const model = openaiModels().embedding;
 
-  const embedRows = (stored ?? []).map((row, i) => ({
+  const embedRows = stored.map((row, i) => ({
     title_id: row.id,
     embedding: embeddings[i],
-    model: modelRow?.model || model,
+    model,
   }));
 
   for (let i = 0; i < embedRows.length; i += 50) {
@@ -167,7 +208,15 @@ async function main() {
     );
   }
 
-  console.log("Ingest complete.");
+  const { count: titleCount } = await supabase
+    .from("titles")
+    .select("id", { count: "exact", head: true });
+  const { count: embedCount } = await supabase
+    .from("title_embeddings")
+    .select("title_id", { count: "exact", head: true });
+  console.log(
+    `Ingest complete. titles=${titleCount ?? 0} embeddings=${embedCount ?? 0} model=${model}`
+  );
 }
 
 main().catch((err) => {

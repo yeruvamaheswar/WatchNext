@@ -28,8 +28,19 @@ export function blendVectors(
   );
 }
 
-export async function embedTexts(texts: string[]) {
-  if (texts.length === 0) return [];
+function isOpenAI429(err: unknown) {
+  if (!err || typeof err !== "object") return false;
+  const e = err as { status?: number; code?: string; message?: string };
+  const message = String(e.message ?? err);
+  return (
+    e.status === 429 ||
+    e.code === "rate_limit_exceeded" ||
+    e.code === "insufficient_quota" ||
+    /429|insufficient[_ ]quota|no credits remaining|rate limit/i.test(message)
+  );
+}
+
+async function createEmbeddings(texts: string[]) {
   const openai = getOpenAI();
   const { embedding } = openaiModels();
   const response = await openai.embeddings.create({
@@ -39,6 +50,18 @@ export async function embedTexts(texts: string[]) {
   return response.data
     .sort((a, b) => a.index - b.index)
     .map((row) => row.embedding);
+}
+
+/** Embed texts. Retry once on 429; if still no credits, throw that error. */
+export async function embedTexts(texts: string[]) {
+  if (texts.length === 0) return [];
+  try {
+    return await createEmbeddings(texts);
+  } catch (err) {
+    if (!isOpenAI429(err)) throw err;
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+    return await createEmbeddings(texts);
+  }
 }
 
 export async function embedText(text: string) {
@@ -53,6 +76,7 @@ export async function embedText(text: string) {
   return vector;
 }
 
+/** Title + overview/description + tags (keywords and genres). Extra fields stay for retrieval. */
 export function titleEmbedText(input: {
   name: string;
   overview?: string | null;
@@ -63,13 +87,16 @@ export function titleEmbedText(input: {
   mediaType?: string;
   year?: number | null;
 }) {
+  const tags = [
+    ...(input.genres ?? []),
+    ...(input.keywords ?? []),
+  ].filter(Boolean);
   return [
     input.name,
     input.year ? String(input.year) : "",
     input.mediaType ?? "",
     input.tagline ?? "",
-    (input.genres ?? []).join(", "),
-    (input.keywords ?? []).join(", "),
+    tags.length ? `tags: ${tags.join(", ")}` : "",
     (input.topCast ?? []).join(", "),
     input.overview ?? "",
   ]
