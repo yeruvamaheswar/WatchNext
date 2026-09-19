@@ -8,6 +8,7 @@
     "start": "next start --hostname 0.0.0.0 --port 3000",
     "lint": "eslint",
     "ingest": "tsx scripts/ingest-tmdb.ts",
+    "verify:openai-env": "tsx scripts/verify-openai-env.ts",
     "icons": "node scripts/generate-icons.mjs",
     "supabase:start": "supabase start",
     "supabase:stop": "supabase stop",
