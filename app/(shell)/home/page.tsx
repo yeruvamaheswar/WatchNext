@@ -72,7 +72,7 @@ export default function HomePage() {
       ) : null}
       <Button
         type="button"
-        className={`w-full ${primaryActionClass}`}
+        className={`w-full md:max-w-xs ${primaryActionClass}`}
         onClick={() => void recommend()}
         disabled={loading}
       >

@@ -23,9 +23,11 @@ const SIZE = {
 export function VoiceOrb({
   state,
   size = "md",
+  docked = false,
 }: {
   state: OrbState;
   size?: OrbSize;
+  docked?: boolean;
 }) {
   const label =
     state === "connecting"
@@ -41,7 +43,12 @@ export function VoiceOrb({
 
   return (
     <div className="flex flex-col items-center gap-3">
-      <div className="relative grid place-items-center">
+      <div
+        className={cn(
+          "relative grid place-items-center",
+          docked && "rounded-full p-1 ring-1 ring-white/20 md:p-0 md:ring-0"
+        )}
+      >
         <div
           className={cn(
             "absolute rounded-full bg-violet-600/30 blur-2xl transition-opacity duration-300",
@@ -71,7 +78,7 @@ export function VoiceOrb({
           )}
         />
       </div>
-      <p className="text-[11px] tracking-[0.28em] text-violet-200/80 uppercase">
+      <p className="text-[11px] font-medium tracking-[0.16em] text-violet-200/80 uppercase">
         {label}
       </p>
     </div>
