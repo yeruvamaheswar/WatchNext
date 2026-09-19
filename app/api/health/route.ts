@@ -7,6 +7,10 @@ import {
 } from "@/lib/env";
 import { getPublicEnv } from "@/lib/public-env";
 import { tryCreateAdminSupabase } from "@/lib/supabase/admin";
+import {
+  supabaseFetchTimeoutMs,
+  supabaseUnreachableHint,
+} from "@/lib/supabase/timeout";
 import { withTimeout } from "@/lib/with-timeout";
 import type { HealthStatus } from "@/lib/types";
 
@@ -48,7 +52,7 @@ export async function GET() {
     try {
       const { count, error } = await withTimeout(
         supabase.from("titles").select("id", { count: "exact", head: true }),
-        2000
+        supabaseFetchTimeoutMs(env.supabaseUrl)
       );
       if (!error) {
         supabaseReachable = true;
@@ -58,12 +62,12 @@ export async function GET() {
         }
       } else {
         hints.push(
-          "Supabase is configured but not reachable. Run `npx supabase start` (Docker), then retry."
+          `Supabase is configured but not reachable. ${supabaseUnreachableHint(env.supabaseUrl)}`
         );
       }
     } catch {
       hints.push(
-        "Supabase is configured but not reachable. Run `npx supabase start` (Docker), then retry."
+        `Supabase is configured but not reachable. ${supabaseUnreachableHint(env.supabaseUrl)}`
       );
     }
   }

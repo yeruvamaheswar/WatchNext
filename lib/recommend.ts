@@ -3,6 +3,11 @@ import { blendVectors, embedText, meanVectors } from "@/lib/embeddings";
 import { getServerEnv } from "@/lib/env";
 import { getOpenAI, openaiModels } from "@/lib/openai";
 import { createAdminSupabase, tryCreateAdminSupabase } from "@/lib/supabase/admin";
+import {
+  supabaseFetchTimeoutMs,
+  supabaseUnreachableHint,
+  supabaseUnreachableMessage,
+} from "@/lib/supabase/timeout";
 import { VIBE_CARDS } from "@/lib/onboarding-catalog";
 import { fetchPosterPath } from "@/lib/tmdb";
 import { withTimeout } from "@/lib/with-timeout";
@@ -190,7 +195,7 @@ async function llmPick(
     parsed.spokenPitch?.trim() ||
     (titles[0]
       ? `Try ${titles[0].name}${titles[0].year ? ` (${titles[0].year})` : ""}.`
-      : "I could not find a match in the local catalog.");
+      : "I could not find a match in the catalog.");
 
   return { titles: await withTmdbPosters(titles), spokenPitch };
 }
@@ -238,26 +243,28 @@ function toSuggested(row: MatchRow, reason: string): SuggestedTitle {
  */
 export async function recommend(input: RecommendInput): Promise<RecommendResult> {
   const supabase = createAdminSupabase();
+  const supabaseUrl = getServerEnv().supabaseUrl;
+  const dbTimeout = supabaseFetchTimeoutMs(supabaseUrl);
   let count: number | null = null;
   try {
     const result = await withTimeout(
       supabase.from("titles").select("id", { count: "exact", head: true }),
-      2000
+      dbTimeout
     );
     if (result.error) {
       throw new ConfigError(
-        "Could not reach local Supabase.",
+        supabaseUnreachableMessage(supabaseUrl),
         "SUPABASE_UNREACHABLE",
-        "Start it with `npx supabase start` (Docker required), then retry."
+        supabaseUnreachableHint(supabaseUrl)
       );
     }
     count = result.count;
   } catch (err) {
     if (err instanceof ConfigError) throw err;
     throw new ConfigError(
-      "Could not reach local Supabase.",
+      supabaseUnreachableMessage(supabaseUrl),
       "SUPABASE_UNREACHABLE",
-      "Start it with `npx supabase start` (Docker required), then retry."
+      supabaseUnreachableHint(supabaseUrl)
     );
   }
   if (!count) {

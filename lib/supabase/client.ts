@@ -1,5 +1,6 @@
 import { createBrowserClient } from "@supabase/ssr";
 import { getPublicEnv } from "@/lib/public-env";
+import { supabaseFetchTimeoutMs } from "@/lib/supabase/timeout";
 import { timedFetch } from "@/lib/timed-fetch";
 
 /** Local Supabase is stored as 127.0.0.1; phones need this machine's LAN host. */
@@ -27,8 +28,9 @@ function resolveBrowserSupabaseUrl(url: string) {
 export function createBrowserSupabase() {
   const { supabaseUrl, supabaseAnon, hasSupabase } = getPublicEnv();
   if (!hasSupabase) return null;
-  return createBrowserClient(resolveBrowserSupabaseUrl(supabaseUrl), supabaseAnon, {
+  const browserUrl = resolveBrowserSupabaseUrl(supabaseUrl);
+  return createBrowserClient(browserUrl, supabaseAnon, {
     db: { retry: false },
-    global: { fetch: timedFetch(2500) },
+    global: { fetch: timedFetch(supabaseFetchTimeoutMs(browserUrl)) },
   });
 }

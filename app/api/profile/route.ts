@@ -1,5 +1,7 @@
+import { getServerEnv } from "@/lib/env";
 import { handleRouteError, jsonError } from "@/lib/errors";
 import { tryCreateAdminSupabase } from "@/lib/supabase/admin";
+import { supabaseFetchTimeoutMs } from "@/lib/supabase/timeout";
 import { withTimeout } from "@/lib/with-timeout";
 
 export const runtime = "nodejs";
@@ -26,7 +28,7 @@ export async function POST(request: Request) {
           },
           { onConflict: "id" }
         ),
-        2000
+        supabaseFetchTimeoutMs(getServerEnv().supabaseUrl)
       );
       return Response.json({ ok: true, persisted: true });
     } catch {
