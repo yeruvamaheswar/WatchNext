@@ -1,0 +1,470 @@
+[
+  {
+    "id": "inception",
+    "title": "Inception",
+    "year": 2010,
+    "mediaType": "movie",
+    "genres": ["Sci-Fi", "Thriller", "Action"],
+    "moods": ["Mind-bending", "Intense", "Curious"],
+    "overview": "A thief who steals secrets through dream-sharing technology is given a chance at redemption if he can plant an idea instead."
+  },
+  {
+    "id": "parasite",
+    "title": "Parasite",
+    "year": 2019,
+    "mediaType": "movie",
+    "genres": ["Thriller", "Drama", "Comedy"],
+    "moods": ["Tense", "Sharp", "Darkly funny"],
+    "overview": "A struggling family infiltrates a wealthy household—and the class tensions beneath the surface start to boil."
+  },
+  {
+    "id": "spirited-away",
+    "title": "Spirited Away",
+    "year": 2001,
+    "mediaType": "movie",
+    "genres": ["Animation", "Fantasy", "Adventure"],
+    "moods": ["Wonder", "Comfort", "Magical"],
+    "overview": "A girl wanders into a spirit bathhouse and must find courage to bring her parents home."
+  },
+  {
+    "id": "the-bear",
+    "title": "The Bear",
+    "year": 2022,
+    "mediaType": "tv",
+    "genres": ["Drama", "Comedy"],
+    "moods": ["Intense", "Heartfelt", "Anxious"],
+    "overview": "A fine-dining chef returns to run his family's chaotic Chicago sandwich shop."
+  },
+  {
+    "id": "mad-max-fury-road",
+    "title": "Mad Max: Fury Road",
+    "year": 2015,
+    "mediaType": "movie",
+    "genres": ["Action", "Adventure", "Sci-Fi"],
+    "moods": ["Adrenaline", "Fierce", "Cathartic"],
+    "overview": "In a desert wasteland, Max and Furiosa race across the wasteland in a relentless chase for freedom."
+  },
+  {
+    "id": "the-office",
+    "title": "The Office",
+    "year": 2005,
+    "mediaType": "tv",
+    "genres": ["Comedy"],
+    "moods": ["Comfort", "Light", "Cozy"],
+    "overview": "A mockumentary about everyday absurdity at a paper company in Scranton."
+  },
+  {
+    "id": "everything-everywhere",
+    "title": "Everything Everywhere All at Once",
+    "year": 2022,
+    "mediaType": "movie",
+    "genres": ["Comedy", "Action", "Sci-Fi"],
+    "moods": ["Mind-bending", "Heartfelt", "Wild"],
+    "overview": "An overwhelmed laundromat owner is pulled across the multiverse to save existence—and reconnect with her family."
+  },
+  {
+    "id": "severance",
+    "title": "Severance",
+    "year": 2022,
+    "mediaType": "tv",
+    "genres": ["Thriller", "Sci-Fi", "Drama"],
+    "moods": ["Uneasy", "Curious", "Tense"],
+    "overview": "Office workers surgically split work memories from personal life—until the two halves start colliding."
+  },
+  {
+    "id": "before-sunrise",
+    "title": "Before Sunrise",
+    "year": 1995,
+    "mediaType": "movie",
+    "genres": ["Romance", "Drama"],
+    "moods": ["Romantic", "Reflective", "Warm"],
+    "overview": "Two strangers spend one night walking Vienna and talking like the world might end at dawn."
+  },
+  {
+    "id": "the-wire",
+    "title": "The Wire",
+    "year": 2002,
+    "mediaType": "tv",
+    "genres": ["Crime", "Drama"],
+    "moods": ["Gritty", "Thoughtful", "Intense"],
+    "overview": "Baltimore institutions collide across cops, dealers, docks, politics, schools, and the press."
+  },
+  {
+    "id": "arrival",
+    "title": "Arrival",
+    "year": 2016,
+    "mediaType": "movie",
+    "genres": ["Sci-Fi", "Drama", "Mystery"],
+    "moods": ["Reflective", "Wonder", "Melancholy"],
+    "overview": "A linguist races to decode an alien language that may rewrite how we understand time."
+  },
+  {
+    "id": "fleabag",
+    "title": "Fleabag",
+    "year": 2016,
+    "mediaType": "tv",
+    "genres": ["Comedy", "Drama"],
+    "moods": ["Sharp", "Cathartic", "Darkly funny"],
+    "overview": "A woman breaks the fourth wall as she navigates grief, desire, and brilliantly messy relationships."
+  },
+  {
+    "id": "get-out",
+    "title": "Get Out",
+    "year": 2017,
+    "mediaType": "movie",
+    "genres": ["Horror", "Thriller", "Mystery"],
+    "moods": ["Tense", "Sharp", "Uneasy"],
+    "overview": "A weekend visit to meet the parents turns into a nightmare of social horror and control."
+  },
+  {
+    "id": "chef-s-table",
+    "title": "Chef's Table",
+    "year": 2015,
+    "mediaType": "tv",
+    "genres": ["Documentary"],
+    "moods": ["Inspiring", "Sensory", "Calm"],
+    "overview": "Intimate portraits of chefs whose food tells stories of obsession, place, and craft."
+  },
+  {
+    "id": "the-grand-budapest",
+    "title": "The Grand Budapest Hotel",
+    "year": 2014,
+    "mediaType": "movie",
+    "genres": ["Comedy", "Adventure", "Crime"],
+    "moods": ["Whimsical", "Stylish", "Light"],
+    "overview": "A legendary concierge and his lobby boy become embroiled in a murder mystery across a fading Europe."
+  },
+  {
+    "id": "dark",
+    "title": "Dark",
+    "year": 2017,
+    "mediaType": "tv",
+    "genres": ["Sci-Fi", "Mystery", "Thriller"],
+    "moods": ["Mind-bending", "Melancholy", "Tense"],
+    "overview": "A German town's disappearances unravel into a knot of time travel, family secrets, and fate."
+  },
+  {
+    "id": "paddington-2",
+    "title": "Paddington 2",
+    "year": 2017,
+    "mediaType": "movie",
+    "genres": ["Comedy", "Family", "Adventure"],
+    "moods": ["Comfort", "Warm", "Joyful"],
+    "overview": "A polite bear wrongfully imprisoned sets out to prove kindness still wins."
+  },
+  {
+    "id": "the-expanse",
+    "title": "The Expanse",
+    "year": 2015,
+    "mediaType": "tv",
+    "genres": ["Sci-Fi", "Drama", "Mystery"],
+    "moods": ["Epic", "Gritty", "Curious"],
+    "overview": "Politics and conspiracy stretch across Earth, Mars, and the Belt as a solar-system mystery unfolds."
+  },
+  {
+    "id": "whiplash",
+    "title": "Whiplash",
+    "year": 2014,
+    "mediaType": "movie",
+    "genres": ["Drama", "Music"],
+    "moods": ["Intense", "Ambitious", "Anxious"],
+    "overview": "A young drummer pushes past his limits under a ruthless jazz instructor."
+  },
+  {
+    "id": "atlanta",
+    "title": "Atlanta",
+    "year": 2016,
+    "mediaType": "tv",
+    "genres": ["Comedy", "Drama"],
+    "moods": ["Surreal", "Sharp", "Reflective"],
+    "overview": "Earn tries to manage his cousin's rising rap career in a show that keeps slipping into the uncanny."
+  },
+  {
+    "id": "dune-2021",
+    "title": "Dune",
+    "year": 2021,
+    "mediaType": "movie",
+    "genres": ["Sci-Fi", "Adventure", "Drama"],
+    "moods": ["Epic", "Immersive", "Tense"],
+    "overview": "Paul Atreides arrives on Arrakis where politics, prophecy, and desert power collide."
+  },
+  {
+    "id": "succession",
+    "title": "Succession",
+    "year": 2018,
+    "mediaType": "tv",
+    "genres": ["Drama", "Comedy"],
+    "moods": ["Sharp", "Vicious", "Darkly funny"],
+    "overview": "A media dynasty's heirs fight for the crown while the empire quietly eats itself."
+  },
+  {
+    "id": "moonlight",
+    "title": "Moonlight",
+    "year": 2016,
+    "mediaType": "movie",
+    "genres": ["Drama"],
+    "moods": ["Tender", "Melancholy", "Intimate"],
+    "overview": "Three chapters in a young man's life as he learns who he is under Miami's harsh light."
+  },
+  {
+    "id": "only-murders",
+    "title": "Only Murders in the Building",
+    "year": 2021,
+    "mediaType": "tv",
+    "genres": ["Comedy", "Mystery", "Crime"],
+    "moods": ["Playful", "Cozy", "Curious"],
+    "overview": "Three true-crime obsessives investigate a murder in their Upper West Side building."
+  },
+  {
+    "id": "her",
+    "title": "Her",
+    "year": 2013,
+    "mediaType": "movie",
+    "genres": ["Romance", "Sci-Fi", "Drama"],
+    "moods": ["Romantic", "Melancholy", "Reflective"],
+    "overview": "A lonely writer falls for an operating system that understands him a little too well."
+  },
+  {
+    "id": "breaking-bad",
+    "title": "Breaking Bad",
+    "year": 2008,
+    "mediaType": "tv",
+    "genres": ["Crime", "Drama", "Thriller"],
+    "moods": ["Intense", "Gritty", "Addictive"],
+    "overview": "A chemistry teacher turns to cooking meth and slowly becomes someone else entirely."
+  },
+  {
+    "id": "ratatouille",
+    "title": "Ratatouille",
+    "year": 2007,
+    "mediaType": "movie",
+    "genres": ["Animation", "Comedy", "Family"],
+    "moods": ["Joyful", "Inspiring", "Warm"],
+    "overview": "A rat with exquisite taste partners with a hapless kitchen worker to chase culinary greatness."
+  },
+  {
+    "id": "true-detective",
+    "title": "True Detective",
+    "year": 2014,
+    "mediaType": "tv",
+    "genres": ["Crime", "Mystery", "Drama"],
+    "moods": ["Noir", "Philosophical", "Uneasy"],
+    "overview": "Detectives chase cases that dig into obsession, memory, and the darker edges of belief."
+  },
+  {
+    "id": "la-la-land",
+    "title": "La La Land",
+    "year": 2016,
+    "mediaType": "movie",
+    "genres": ["Romance", "Musical", "Drama"],
+    "moods": ["Romantic", "Bittersweet", "Dreamy"],
+    "overview": "An actress and a jazz musician fall in love while chasing incompatible versions of the dream."
+  },
+  {
+    "id": "black-mirror",
+    "title": "Black Mirror",
+    "year": 2011,
+    "mediaType": "tv",
+    "genres": ["Sci-Fi", "Thriller", "Drama"],
+    "moods": ["Uneasy", "Sharp", "Mind-bending"],
+    "overview": "Standalone stories about technology that feels a little too close to tomorrow."
+  },
+  {
+    "id": "the-matrix",
+    "title": "The Matrix",
+    "year": 1999,
+    "mediaType": "movie",
+    "genres": ["Sci-Fi", "Action"],
+    "moods": ["Mind-bending", "Adrenaline", "Cool"],
+    "overview": "A hacker discovers reality is a simulation and chooses the harder pill."
+  },
+  {
+    "id": "ted-lasso",
+    "title": "Ted Lasso",
+    "year": 2020,
+    "mediaType": "tv",
+    "genres": ["Comedy", "Drama", "Sports"],
+    "moods": ["Heartfelt", "Warm", "Uplifting"],
+    "overview": "An American football coach brings relentless optimism to an English soccer club."
+  },
+  {
+    "id": "nope",
+    "title": "Nope",
+    "year": 2022,
+    "mediaType": "movie",
+    "genres": ["Horror", "Sci-Fi", "Mystery"],
+    "moods": ["Uneasy", "Spectacular", "Tense"],
+    "overview": "Siblings running a horse ranch confront something impossible in the California sky."
+  },
+  {
+    "id": "the-good-place",
+    "title": "The Good Place",
+    "year": 2016,
+    "mediaType": "tv",
+    "genres": ["Comedy", "Fantasy"],
+    "moods": ["Whimsical", "Heartfelt", "Smart"],
+    "overview": "A woman wakes up in what she thinks is heaven and has to learn what being good actually means."
+  },
+  {
+    "id": "portrait-of-a-lady",
+    "title": "Portrait of a Lady on Fire",
+    "year": 2019,
+    "mediaType": "movie",
+    "genres": ["Romance", "Drama", "History"],
+    "moods": ["Romantic", "Intimate", "Slow-burn"],
+    "overview": "A painter and her subject fall into a secret love on an isolated island before a marriage arrives."
+  },
+  {
+    "id": "slow-horses",
+    "title": "Slow Horses",
+    "year": 2022,
+    "mediaType": "tv",
+    "genres": ["Thriller", "Drama", "Comedy"],
+    "moods": ["Dry", "Tense", "Gritty"],
+    "overview": "Disgraced MI5 agents in a dumping-ground office keep stumbling into real danger."
+  },
+  {
+    "id": "spider-man-across",
+    "title": "Spider-Man: Across the Spider-Verse",
+    "year": 2023,
+    "mediaType": "movie",
+    "genres": ["Animation", "Action", "Adventure"],
+    "moods": ["Exhilarating", "Emotional", "Stylish"],
+    "overview": "Miles Morales leaps across spider-societies while trying to rewrite destiny on his own terms."
+  },
+  {
+    "id": "station-eleven",
+    "title": "Station Eleven",
+    "year": 2021,
+    "mediaType": "tv",
+    "genres": ["Drama", "Sci-Fi"],
+    "moods": ["Hopeful", "Melancholy", "Lyrical"],
+    "overview": "After a pandemic, a traveling theater troupe keeps art alive in the ruins."
+  },
+  {
+    "id": "knives-out",
+    "title": "Knives Out",
+    "year": 2019,
+    "mediaType": "movie",
+    "genres": ["Mystery", "Comedy", "Crime"],
+    "moods": ["Playful", "Clever", "Cozy"],
+    "overview": "A detective untangles a wealthy family's lies after a famous novelist dies."
+  },
+  {
+    "id": "the-leftovers",
+    "title": "The Leftovers",
+    "year": 2014,
+    "mediaType": "tv",
+    "genres": ["Drama", "Mystery"],
+    "moods": ["Grief-struck", "Strange", "Profound"],
+    "overview": "After 2% of the world vanishes, the people left behind invent new ways to live with absence."
+  },
+  {
+    "id": "ocean-s-eleven",
+    "title": "Ocean's Eleven",
+    "year": 2001,
+    "mediaType": "movie",
+    "genres": ["Crime", "Comedy", "Thriller"],
+    "moods": ["Cool", "Fun", "Stylish"],
+    "overview": "Danny Ocean assembles a crew for an elegant Las Vegas casino heist."
+  },
+  {
+    "id": "arcane",
+    "title": "Arcane",
+    "year": 2021,
+    "mediaType": "tv",
+    "genres": ["Animation", "Action", "Drama"],
+    "moods": ["Epic", "Emotional", "Stylish"],
+    "overview": "Sisters on opposite sides of a class war reshape a city of invention and violence."
+  },
+  {
+    "id": "little-miss-sunshine",
+    "title": "Little Miss Sunshine",
+    "year": 2006,
+    "mediaType": "movie",
+    "genres": ["Comedy", "Drama"],
+    "moods": ["Bittersweet", "Warm", "Road-trip"],
+    "overview": "A dysfunctional family piles into a van for a children's beauty pageant and somehow finds grace."
+  },
+  {
+    "id": "better-call-saul",
+    "title": "Better Call Saul",
+    "year": 2015,
+    "mediaType": "tv",
+    "genres": ["Crime", "Drama"],
+    "moods": ["Slow-burn", "Tragic", "Sharp"],
+    "overview": "Jimmy McGill's transformation into Saul Goodman is a masterpiece of small choices."
+  },
+  {
+    "id": "ex-machina",
+    "title": "Ex Machina",
+    "year": 2014,
+    "mediaType": "movie",
+    "genres": ["Sci-Fi", "Thriller", "Drama"],
+    "moods": ["Uneasy", "Intellectual", "Tense"],
+    "overview": "A coder is invited to test an AI that may already be testing him."
+  },
+  {
+    "id": "schitt-s-creek",
+    "title": "Schitt's Creek",
+    "year": 2015,
+    "mediaType": "tv",
+    "genres": ["Comedy"],
+    "moods": ["Comfort", "Warm", "Heartfelt"],
+    "overview": "A wealthy family loses everything and rediscovers themselves in a tiny town they once bought as a joke."
+  },
+  {
+    "id": "the-social-network",
+    "title": "The Social Network",
+    "year": 2010,
+    "mediaType": "movie",
+    "genres": ["Drama", "Biography"],
+    "moods": ["Ambitious", "Sharp", "Cool"],
+    "overview": "The founding of Facebook becomes a story about friendship, ego, and the cost of winning."
+  },
+  {
+    "id": "hunter-x-hunter",
+    "title": "Hunter x Hunter",
+    "year": 2011,
+    "mediaType": "tv",
+    "genres": ["Animation", "Adventure", "Action"],
+    "moods": ["Adventurous", "Emotional", "Thrilling"],
+    "overview": "Gon Freecss sets out to become a Hunter and finds friendship, danger, and moral complexity."
+  },
+  {
+    "id": "eternal-sunshine",
+    "title": "Eternal Sunshine of the Spotless Mind",
+    "year": 2004,
+    "mediaType": "movie",
+    "genres": ["Romance", "Sci-Fi", "Drama"],
+    "moods": ["Bittersweet", "Mind-bending", "Intimate"],
+    "overview": "A couple erases each other from memory—and still finds their way back."
+  },
+  {
+    "id": "reservation-dogs",
+    "title": "Reservation Dogs",
+    "year": 2021,
+    "mediaType": "tv",
+    "genres": ["Comedy", "Drama"],
+    "moods": ["Heartfelt", "Funny", "Grounded"],
+    "overview": "Indigenous teens on a reservation chase California dreams while staying tangled in home."
+  },
+  {
+    "id": "sicario",
+    "title": "Sicario",
+    "year": 2015,
+    "mediaType": "movie",
+    "genres": ["Crime", "Thriller", "Action"],
+    "moods": ["Brutal", "Tense", "Noir"],
+    "overview": "An idealistic FBI agent is pulled into a murky cartel war where the rules keep dissolving."
+  },
+  {
+    "id": "the-mandalorian",
+    "title": "The Mandalorian",
+    "year": 2019,
+    "mediaType": "tv",
+    "genres": ["Sci-Fi", "Adventure", "Action"],
+    "moods": ["Adventure", "Warm", "Fun"],
+    "overview": "A lone bounty hunter protects a mysterious child across a galaxy still sorting itself out."
+  }
+]
