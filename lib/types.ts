@@ -81,6 +81,28 @@ export type RecommendInput = {
   userId?: string | null;
   excludeTmdbIds?: number[];
   sessionExcludeIds?: number[];
+  /** Solo (default) vs group discussion recommend. Live Realtime stays solo. */
+  mode?: "solo" | "group";
+  /** Person N preference notes from group extract; used only when mode is group. */
+  speakerNotes?: Record<string, string>;
+};
+
+export type DiarizedSegment = {
+  speaker: string;
+  start: number;
+  end: number;
+  text: string;
+};
+
+export type DiarizedTranscript = {
+  text: string;
+  segments: DiarizedSegment[];
+};
+
+export type GroupExtractResult = {
+  extract: ExtractedIntent;
+  speakerNotes: Record<string, string>;
+  labeledTranscript: string;
 };
 
 export type HealthStatus = {
