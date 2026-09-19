@@ -20,7 +20,7 @@ export function PosterTiles({
   return (
     <>
       {layout === "rail" ? (
-        <div className="grid h-full min-h-0 w-full grid-cols-1 grid-rows-3 gap-2 overflow-hidden md:grid-cols-3 md:grid-rows-none md:gap-3">
+        <div className="grid h-full min-h-0 w-full grid-cols-1 grid-rows-3 gap-1.5 overflow-hidden md:grid-cols-3 md:grid-rows-none md:gap-3">
           {titles.map((title) => (
             <PosterTile
               key={`${title.mediaType}-${title.tmdbId}`}
@@ -73,7 +73,7 @@ function PosterTile({
         className={cn(
           "bg-violet-950",
           layout === "rail"
-            ? "h-full w-auto max-w-[30%] shrink-0 aspect-[2/3] md:absolute md:inset-0 md:h-auto md:w-auto md:max-w-none"
+            ? "h-full w-auto max-w-[46%] shrink-0 aspect-[2/3] md:absolute md:inset-0 md:h-auto md:w-auto md:max-w-none"
             : "aspect-[2/3]"
         )}
       >
@@ -94,17 +94,17 @@ function PosterTile({
         )}
       </div>
       {layout === "rail" ? (
-        <div className="flex min-w-0 flex-1 flex-col justify-center px-3 py-2 md:absolute md:inset-x-0 md:bottom-0 md:flex-none md:bg-gradient-to-t md:from-black/85 md:via-black/45 md:to-transparent md:px-2 md:pt-8 md:pb-2">
-          <p className="line-clamp-1 text-sm font-medium leading-tight md:text-xs">
+        <div className="flex min-w-0 flex-1 flex-col justify-center px-3.5 py-2 md:absolute md:inset-x-0 md:bottom-0 md:flex-none md:bg-gradient-to-t md:from-black/85 md:via-black/45 md:to-transparent md:px-2 md:pt-8 md:pb-2">
+          <p className="line-clamp-2 text-base font-semibold leading-snug md:line-clamp-1 md:text-xs md:font-medium md:leading-tight">
             {title.name}
             {title.year ? (
-              <span className="text-muted-foreground md:text-white/60">
+              <span className="font-medium text-muted-foreground md:font-medium md:text-white/60">
                 {" "}
                 ({title.year})
               </span>
             ) : null}
           </p>
-          <p className="mt-0.5 line-clamp-2 text-xs text-violet-100/80 md:line-clamp-1 md:text-[10px]">
+          <p className="mt-1 line-clamp-3 text-sm leading-snug text-violet-100/85 md:mt-0.5 md:line-clamp-1 md:text-[10px]">
             {title.reason}
           </p>
         </div>
