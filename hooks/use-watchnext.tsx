@@ -15,10 +15,11 @@ import {
   emptyGuest,
   GUEST_SSR,
   loadGuest,
+  rememberSeenOnboarding,
   saveGuest,
   upsertLike,
 } from "@/lib/guest-store";
-import { getPublicEnv } from "@/lib/env";
+import { getPublicEnv } from "@/lib/public-env";
 import { abortableFetch, withTimeout } from "@/lib/with-timeout";
 import type { GuestLike, GuestState } from "@/lib/types";
 
@@ -34,6 +35,11 @@ type WatchNextValue = {
   setVibeVerdict: (id: string, liked: boolean) => void;
   completeOnboarding: () => Promise<void>;
   resetOnboarding: () => void;
+  rememberOnboardingDeck: (seen: {
+    movieIds: number[];
+    showIds: number[];
+    vibeIds: string[];
+  }) => void;
   setDisplayName: (name: string) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string) => Promise<void>;
@@ -159,6 +165,16 @@ export function WatchNextProvider({ children }: { children: React.ReactNode }) {
     });
   }, [guest, setGuest]);
 
+  const rememberOnboardingDeck = useCallback(
+    (seen: { movieIds: number[]; showIds: number[]; vibeIds: string[] }) => {
+      setGuest({
+        ...guest,
+        seenOnboarding: rememberSeenOnboarding(guest.seenOnboarding, seen),
+      });
+    },
+    [guest, setGuest]
+  );
+
   const setDisplayName = useCallback(
     async (name: string) => {
       const trimmed = name.trim() || "Guest";
@@ -257,6 +273,7 @@ export function WatchNextProvider({ children }: { children: React.ReactNode }) {
       setVibeVerdict,
       completeOnboarding,
       resetOnboarding,
+      rememberOnboardingDeck,
       setDisplayName,
       signIn,
       signUp,
@@ -276,6 +293,7 @@ export function WatchNextProvider({ children }: { children: React.ReactNode }) {
       setVibeVerdict,
       completeOnboarding,
       resetOnboarding,
+      rememberOnboardingDeck,
       setDisplayName,
       signIn,
       signUp,

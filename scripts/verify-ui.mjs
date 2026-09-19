@@ -21,27 +21,25 @@ async function main() {
       localStorage.removeItem("watchnext-guest-v1");
     });
 
+    await page.goto(`${origin}/home`, { waitUntil: "domcontentloaded" });
+    await page.waitForURL(/\/onboarding/, { timeout: 10000 });
+    logs.push(`home without onboarding redirected: ${page.url()}`);
+
     await page.goto(`${origin}/onboarding`, { waitUntil: "domcontentloaded" });
-    await page.waitForSelector('[data-testid="onboarding-skip"]', { timeout: 15000 });
+    await page.waitForSelector('[data-testid="swipe-card"]', { timeout: 15000 });
     await page.waitForTimeout(400);
     logs.push(`onboarding start: ${await page.locator("h1").innerText()}`);
     await page.screenshot({ path: `${out}/onboarding-movies.png` });
 
-    await page.locator('[data-testid="onboarding-skip"]').click();
-    await page.waitForFunction(() =>
-      document.querySelector("h1")?.textContent?.includes("TV")
-    );
-    logs.push(`after skip 1: ${await page.locator("h1").innerText()}`);
+    await swipeUntilTitle(page, "TV");
+    logs.push(`after movies: ${await page.locator("h1").innerText()}`);
     await page.screenshot({ path: `${out}/onboarding-tv.png` });
 
-    await page.locator('[data-testid="onboarding-next"]').click();
-    await page.waitForFunction(() =>
-      document.querySelector("h1")?.textContent?.includes("Vibes")
-    );
-    logs.push(`after next: ${await page.locator("h1").innerText()}`);
+    await swipeUntilTitle(page, "Vibes");
+    logs.push(`after shows: ${await page.locator("h1").innerText()}`);
     await page.screenshot({ path: `${out}/onboarding-vibes.png` });
 
-    await page.locator('[data-testid="onboarding-finish"]').click();
+    await swipeUntilHome(page);
     await page.waitForURL(/\/home/, { timeout: 10000 });
     await page.waitForSelector("text=What should I watch?");
     logs.push(`after finish url: ${page.url()}`);
@@ -79,6 +77,37 @@ async function main() {
     console.log(logs.join("\n"));
     await browser.close().catch(() => {});
   }
+}
+
+async function swipeCard(page) {
+  const card = page.locator('[data-testid="swipe-card"]');
+  const box = await card.boundingBox();
+  if (!box) return false;
+  const y = box.y + box.height / 2;
+  const startX = box.x + box.width / 2;
+  await page.mouse.move(startX, y);
+  await page.mouse.down();
+  await page.mouse.move(startX + 180, y, { steps: 8 });
+  await page.mouse.up();
+  await page.waitForTimeout(180);
+  return true;
+}
+
+async function swipeUntilTitle(page, text) {
+  for (let i = 0; i < 40; i++) {
+    const title = await page.locator("h1").innerText();
+    if (title.includes(text)) return;
+    if (!(await swipeCard(page))) await page.waitForTimeout(200);
+  }
+  throw new Error(`Did not reach "${text}" after swiping.`);
+}
+
+async function swipeUntilHome(page) {
+  for (let i = 0; i < 40; i++) {
+    if (/\/home/.test(page.url())) return;
+    if (!(await swipeCard(page))) await page.waitForTimeout(200);
+  }
+  throw new Error("Did not reach /home after swiping.");
 }
 
 main().catch((err) => {

@@ -1,9 +1,14 @@
 import { AppShell } from "@/components/app-shell";
+import { RequireOnboarding } from "@/components/require-onboarding";
 
 export default function ShellLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  return <AppShell>{children}</AppShell>;
+  return (
+    <RequireOnboarding>
+      <AppShell>{children}</AppShell>
+    </RequireOnboarding>
+  );
 }

@@ -21,6 +21,7 @@ export type VibeCard = {
   name: string;
   description: string;
   prompt: string;
+  backdropPath?: string | null;
 };
 
 export type GuestLike = {
@@ -31,6 +32,12 @@ export type GuestLike = {
   name?: string;
 };
 
+export type SeenOnboarding = {
+  movieIds: number[];
+  showIds: number[];
+  vibeIds: string[];
+};
+
 export type GuestState = {
   guestId: string;
   displayName: string;
@@ -38,6 +45,7 @@ export type GuestState = {
   likes: GuestLike[];
   likedVibes: string[];
   dislikedVibes: string[];
+  seenOnboarding: SeenOnboarding;
 };
 
 export type ExtractedIntent = {

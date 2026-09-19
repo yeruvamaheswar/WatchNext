@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import { getPublicEnv } from "@/lib/env";
+import { getPublicEnv } from "@/lib/public-env";
 import { timedFetch } from "@/lib/timed-fetch";
 
 /** Cookie-less server client for public reads. Auth cookies are optional in v1. */
