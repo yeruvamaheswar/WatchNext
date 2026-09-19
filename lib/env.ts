@@ -125,6 +125,9 @@ export function getServerEnv() {
     transcribeModel:
       firstNonEmpty(readProcessEnv("OPENAI_TRANSCRIBE_MODEL"), fileEnv.OPENAI_TRANSCRIBE_MODEL) ||
       "gpt-4o-transcribe",
+    diarizeModel:
+      firstNonEmpty(readProcessEnv("OPENAI_DIARIZE_MODEL"), fileEnv.OPENAI_DIARIZE_MODEL) ||
+      "gpt-4o-transcribe-diarize",
     ttsModel: firstNonEmpty(readProcessEnv("OPENAI_TTS_MODEL"), fileEnv.OPENAI_TTS_MODEL) || "tts-1",
     ttsVoice: firstNonEmpty(readProcessEnv("OPENAI_TTS_VOICE"), fileEnv.OPENAI_TTS_VOICE) || "nova",
     realtimeModel:

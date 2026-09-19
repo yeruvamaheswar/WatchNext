@@ -128,7 +128,8 @@ function parseExcludeGenres(extract?: ExtractedIntent | null) {
 async function llmPick(
   candidates: MatchRow[],
   queryText: string,
-  extract?: ExtractedIntent | null
+  extract?: ExtractedIntent | null,
+  opts?: { mode?: "solo" | "group"; speakerNotes?: Record<string, string> }
 ): Promise<RecommendResult> {
   const openai = getOpenAI();
   const { chat } = openaiModels();
@@ -143,6 +144,11 @@ async function llmPick(
     voteAverage: c.vote_average,
   }));
 
+  const isGroup = opts?.mode === "group";
+  const system = isGroup
+    ? "You pick 1-3 titles from a candidate list for a GROUP watching together. Reply JSON: { \"picks\": [{ \"id\": string, \"reason\": string }], \"spokenPitch\": string }. spokenPitch is one spoken sentence (under 30 words) that can briefly cite Person 1/2/3 preferences when helpful. Reasons explain why it works for the group. Never invent ids or catalog titles."
+    : "You pick 1-3 titles from a candidate list for a watch-now recommendation. Reply JSON: { \"picks\": [{ \"id\": string, \"reason\": string }], \"spokenPitch\": string }. spokenPitch is one spoken sentence (under 25 words) for TTS. Reasons are one line, why it matches the request. Never invent ids.";
+
   const completion = await openai.chat.completions.create({
     model: chat,
     temperature: 0.6,
@@ -150,14 +156,14 @@ async function llmPick(
     messages: [
       {
         role: "system",
-        content:
-          "You pick 1-3 titles from a candidate list for a watch-now recommendation. Reply JSON: { \"picks\": [{ \"id\": string, \"reason\": string }], \"spokenPitch\": string }. spokenPitch is one spoken sentence (under 25 words) for TTS. Reasons are one line, why it matches the request. Never invent ids.",
+        content: system,
       },
       {
         role: "user",
         content: JSON.stringify({
           request: queryText,
           extract: extract ?? null,
+          speakerNotes: isGroup ? opts?.speakerNotes ?? {} : undefined,
           candidates: catalog,
         }),
       },
@@ -187,7 +193,11 @@ async function llmPick(
       : candidates.slice(0, 3).map((row, i) =>
           toSuggested(
             row,
-            i === 0 ? "Closest match to what you asked for." : "Another strong fit."
+            i === 0
+              ? isGroup
+                ? "Closest group compromise in the catalog."
+                : "Closest match to what you asked for."
+              : "Another strong fit."
           )
         );
 
@@ -279,7 +289,9 @@ export async function recommend(input: RecommendInput): Promise<RecommendResult>
   const queryEmbedding = await embedText(queryText);
   const storedTaste = await loadTasteVector(input.userId);
   const likeTaste = storedTaste ?? (await tasteFromLikes(input.likes));
-  const blended = blendVectors(queryEmbedding, likeTaste, 0.55);
+  // Group: discussion-heavy (~85% conversation). Solo: 55% query / 45% taste.
+  const blendWeight = input.mode === "group" ? 0.85 : 0.55;
+  const blended = blendVectors(queryEmbedding, likeTaste, blendWeight);
 
   const exclude = [
     ...new Set([
@@ -338,5 +350,8 @@ export async function recommend(input: RecommendInput): Promise<RecommendResult>
     );
   }
 
-  return llmPick(rows, queryText, input.extract);
+  return llmPick(rows, queryText, input.extract, {
+    mode: input.mode === "group" ? "group" : "solo",
+    speakerNotes: input.speakerNotes,
+  });
 }

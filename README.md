@@ -75,7 +75,19 @@ npm run ingest
 
 ## Voice pipeline (Room)
 
-Explicit, not Realtime API:
+### Live session (Realtime)
+
+One-on-one live session via OpenAI Realtime (WebRTC): captions stream while you talk; the host can call suggest mid-conversation.
+
+### Group mode
+
+Toggle **Group mode** under the Start button. One phone records everyone nearby (noise-hardened mic + energy VAD). After **~6s of silence** or a tap on **Suggest**, audio is diarized (`gpt-4o-transcribe-diarize`) into Person 1 / 2 / 3…, then the catalog is searched for a group compromise. Live Realtime is unchanged when Group mode is off.
+
+Legacy batch helpers still exist (`/api/transcribe`, `/api/extract`, `/api/tts`) but Live Room uses Realtime; Group uses `/api/transcribe/diarize` + `/api/group/recommend`.
+
+## Voice pipeline (Room) — historical batch notes
+
+Explicit, not Realtime API (batch helpers):
 
 1. **VAD** — energy-based speech vs silence on this device’s mic  
 2. **STT** — `/api/transcribe` (Whisper / `gpt-4o-transcribe`)  

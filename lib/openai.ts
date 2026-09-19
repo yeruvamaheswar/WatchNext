@@ -16,6 +16,7 @@ export function openaiModels() {
     embedding: env.embeddingModel,
     chat: env.chatModel,
     transcribe: env.transcribeModel,
+    diarize: env.diarizeModel,
     tts: env.ttsModel,
     voice: env.ttsVoice,
     realtime: env.realtimeModel,

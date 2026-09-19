@@ -69,8 +69,13 @@ function optionalArgValue(flag: string) {
 }
 
 /** Mix movies + TV so a small --limit is not all one media type. */
-function takeLimit(titles: TmdbTitle[], limit: number | null) {
+function takeLimit(
+  titles: TmdbTitle[],
+  limit: number | null,
+  media: "movie" | "tv" | "all"
+) {
   if (!limit) return titles;
+  if (media !== "all") return titles.slice(0, limit);
   const movies = titles.filter((t) => t.mediaType === "movie");
   const tv = titles.filter((t) => t.mediaType === "tv");
   const movieN = Math.min(movies.length, Math.ceil(limit / 2));
@@ -88,39 +93,91 @@ function takeLimit(titles: TmdbTitle[], limit: number | null) {
   return picked.slice(0, limit);
 }
 
+function parseMediaArg(): "movie" | "tv" | "all" {
+  const idx = process.argv.indexOf("--media");
+  if (idx < 0 || !process.argv[idx + 1]) return "all";
+  const raw = String(process.argv[idx + 1]).toLowerCase().trim();
+  if (raw === "movie" || raw === "tv" || raw === "all") return raw;
+  return "all";
+}
+
+async function loadExistingKeys(
+  supabase: ReturnType<typeof createIngestSupabase>,
+  media: "movie" | "tv" | "all"
+) {
+  const keys = new Set<string>();
+  let from = 0;
+  const pageSize = 1000;
+  while (true) {
+    let query = supabase
+      .from("titles")
+      .select("tmdb_id, media_type")
+      .range(from, from + pageSize - 1);
+    if (media !== "all") query = query.eq("media_type", media);
+    const { data, error } = await query;
+    if (error) throw new Error(`Failed loading existing titles: ${error.message}`);
+    if (!data?.length) break;
+    for (const row of data) keys.add(`${row.media_type}:${row.tmdb_id}`);
+    if (data.length < pageSize) break;
+    from += pageSize;
+  }
+  return keys;
+}
+
 async function main() {
   requireTmdb();
   requireOpenAI();
   const limit = optionalArgValue("--limit");
-  const pages = argValue("--pages", limit ? 1 : getServerEnv().ingestPages);
+  const media = parseMediaArg();
+  const newOnly = process.argv.includes("--new-only");
+  const mediaTypes =
+    media === "all" ? (["movie", "tv"] as const) : ([media] as const);
+  // With --new-only + --limit, keep paging until we fill the quota (capped).
+  const defaultPages = limit && !newOnly ? 1 : getServerEnv().ingestPages;
+  const pages = argValue("--pages", newOnly && limit ? 50 : defaultPages);
   const skipEnrich = process.argv.includes("--quick");
   console.log(
-    `WatchNext ingest: ${pages} TMDB pages each of movies + TV${
+    `WatchNext ingest: up to ${pages} TMDB pages of ${mediaTypes.join(" + ")}${
       limit ? `, limit ${limit}` : ""
-    }${skipEnrich ? " (quick, no keywords/cast)" : ""}.`
+    }${newOnly ? ", new-only" : ""}${skipEnrich ? " (quick, no keywords/cast)" : ""}.`
   );
   console.log(
     `Using ${aliasSources.openaiSource} and ${aliasSources.tmdbSource} (values not logged).`
   );
 
+  const supabase = createIngestSupabase();
+  const existing = newOnly ? await loadExistingKeys(supabase, media) : new Set<string>();
+  if (newOnly) console.log(`Existing in DB (scope=${media}): ${existing.size}`);
+
   const collected: TmdbTitle[] = [];
-  for (const mediaType of ["movie", "tv"] as const) {
+  const seen = new Set<string>();
+  for (const mediaType of mediaTypes) {
     for (let page = 1; page <= pages; page++) {
+      if (limit && collected.length >= limit) break;
       const batch = await fetchPopular(mediaType, page);
-      collected.push(...batch);
-      console.log(`  ${mediaType} page ${page}: ${batch.length} titles`);
+      let added = 0;
+      for (const title of batch) {
+        const key = `${title.mediaType}:${title.tmdbId}`;
+        if (seen.has(key)) continue;
+        if (newOnly && existing.has(key)) continue;
+        seen.add(key);
+        collected.push(title);
+        added++;
+        if (limit && collected.length >= limit) break;
+      }
+      console.log(
+        `  ${mediaType} page ${page}: ${batch.length} fetched, ${added} kept (pool ${collected.length})`
+      );
+      if (batch.length === 0) break;
     }
   }
 
-  const unique = takeLimit(
-    [
-      ...new Map(
-        collected.map((t) => [`${t.mediaType}:${t.tmdbId}`, t] as const)
-      ).values(),
-    ],
-    limit
-  );
-  console.log(`Unique titles: ${unique.length}`);
+  const unique = takeLimit(collected, limit, media);
+  console.log(`Unique titles to ingest: ${unique.length}`);
+  if (unique.length === 0) {
+    console.log("Nothing new to ingest.");
+    return;
+  }
 
   const enriched = skipEnrich
     ? unique
@@ -137,7 +194,6 @@ async function main() {
         }
       });
 
-  const supabase = createIngestSupabase();
   const upserts = enriched.map((t) => ({
     tmdb_id: t.tmdbId,
     media_type: t.mediaType,
