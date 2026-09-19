@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="WatchNext">
+  <rect width="512" height="512" fill="#0c0614"/>
+  <defs>
+    <radialGradient id="orb" cx="38%" cy="32%" r="68%">
+      <stop offset="0%" stop-color="#f3e8ff"/>
+      <stop offset="42%" stop-color="#c084fc"/>
+      <stop offset="78%" stop-color="#6d28d9"/>
+      <stop offset="100%" stop-color="#4c1d95"/>
+    </radialGradient>
+  </defs>
+  <circle cx="256" cy="256" r="174" fill="url(#orb)"/>
+</svg>

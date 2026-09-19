@@ -1,13 +1,37 @@
 import type { NextConfig } from "next";
+import { networkInterfaces } from "os";
 
-const extraOrigins = (process.env.ALLOWED_DEV_ORIGIN ?? "")
-  .split(",")
-  .map((s) => s.trim())
-  .filter(Boolean);
+function extraOriginsFromEnv() {
+  return (process.env.ALLOWED_DEV_ORIGIN ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+function localLanHostnames() {
+  const hosts = new Set<string>();
+  for (const addrs of Object.values(networkInterfaces())) {
+    for (const addr of addrs ?? []) {
+      if (addr.internal) continue;
+      const host = addr.address.split("%")[0];
+      if (host) hosts.add(host);
+    }
+  }
+  return [...hosts];
+}
 
 const nextConfig: NextConfig = {
-  // 127.0.0.1 vs localhost is treated as cross-origin in Next 16; LAN IPs go here too.
-  allowedDevOrigins: ["127.0.0.1", "localhost", "0.0.0.0", ...extraOrigins],
+  // 127.0.0.1 vs localhost is treated as cross-origin in Next 16.
+  // `*.*.*.*` matches any IPv4 the browser uses (phones/PCs on the LAN).
+  // Interface addresses cover IPv6 and stay current across DHCP.
+  allowedDevOrigins: [
+    "127.0.0.1",
+    "localhost",
+    "0.0.0.0",
+    "*.*.*.*",
+    ...localLanHostnames(),
+    ...extraOriginsFromEnv(),
+  ],
   devIndicators: false,
   images: {
     remotePatterns: [

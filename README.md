@@ -28,18 +28,14 @@ Copy `.env.example` to `.env.local` and fill secrets there (never commit `.env.l
 ```bash
 cp .env.example .env.local   # then add OPENAI_API_KEY and TMDB_API_KEY
 npm install
-npm run dev                  # http://127.0.0.1:3000  (binds 0.0.0.0 for LAN/iPhone)
+npm run dev                  # http://127.0.0.1:3000  (binds 0.0.0.0 for LAN)
 ```
 
-On an iPhone, open `http://<your-machine-ip>:3000`. Safari may require HTTPS for the mic; use a local HTTPS proxy if `getUserMedia` is blocked on HTTP.
+On a phone or another PC, open `http://<your-machine-ip>:3000` (Next prints a Network URL). LAN IPv4 hosts are allowed automatically. For a tunnel hostname, set `ALLOWED_DEV_ORIGIN`.
 
-If Next.js blocks `/_next` assets from that host, restart with:
+Safari may require HTTPS for the mic; use a local HTTPS proxy if `getUserMedia` is blocked on HTTP.
 
-```bash
-ALLOWED_DEV_ORIGIN=192.168.1.20 npm run dev
-```
-
-Add to Home Screen for standalone PWA chrome (`display: standalone`, purple theme; iOS uses `apple-mobile-web-app-capable=yes`).
+Add to Home Screen for standalone PWA chrome (`display: standalone`, purple theme, Apple splash + icons).
 
 ### 2. Local Supabase (Docker)
 
@@ -95,6 +91,7 @@ Suggestions run on pause **and** watch-intent (or the **Suggest** button). Botto
 | --- | --- |
 | `npm run dev` | Next.js on `0.0.0.0:3000` |
 | `npm run build` / `npm start` | Production local server |
+| `npm run icons` | Generate favicon, PWA, Apple, and OG images |
 | `npm run ingest` | TMDB upsert + OpenAI embeddings |
 | `npx supabase start` | Local Postgres, Auth, Studio |
 | `npx supabase db reset` | Recreate DB from `supabase/migrations` |
