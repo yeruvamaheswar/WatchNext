@@ -29,8 +29,10 @@ export async function GET() {
     );
   }
   if (!pub.hasSupabase) {
-    missing.push("NEXT_PUBLIC_SUPABASE_URL / ANON KEY");
-    hints.push("Run `npx supabase start` and copy keys into .env.local.");
+    missing.push("NEXT_PUBLIC_SUPABASE_URL / ANON or PUBLISHABLE KEY");
+    hints.push(
+      "Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY or NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY in .env.local."
+    );
   }
 
   let supabaseReachable = false;

@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { MicOff, PhoneOff, Captions, Sparkles } from "lucide-react";
 import { VoiceOrb } from "@/components/voice-orb";
 import { PosterTiles } from "@/components/poster-tiles";
 import { HealthBanner } from "@/components/health-banner";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useRoomSession } from "@/hooks/use-room-session";
 import { useRoomUi } from "@/hooks/use-room-ui";
 import { useWatchNext } from "@/hooks/use-watchnext";
@@ -37,6 +38,11 @@ export default function RoomPage() {
           </p>
         </div>
         <HealthBanner />
+        {room.micHint ? (
+          <div className="rounded-2xl border border-amber-500/30 bg-amber-950/40 px-4 py-3 text-xs text-amber-100">
+            {room.micHint} You can still start and type what you want to watch.
+          </div>
+        ) : null}
         <VoiceOrb state="idle" />
         <Button
           type="button"
@@ -46,7 +52,9 @@ export default function RoomPage() {
           Start session
         </Button>
         <p className="text-center text-xs text-muted-foreground">
-          Mic access is used only while the session is on.
+          {room.micHint
+            ? "Type your request after starting. Mic access needs HTTPS or localhost."
+            : "Mic access is used only while the session is on."}
         </p>
       </main>
     );
@@ -84,17 +92,25 @@ export default function RoomPage() {
             <PosterTiles titles={room.result.titles} />
           </div>
         ) : null}
+        {!room.micEnabled ? (
+          <RoomTextComposer
+            busy={room.busy}
+            onSubmit={(text) => void room.submitText(text)}
+          />
+        ) : null}
       </div>
       <div className="mx-auto flex w-full max-w-md items-center justify-center gap-4 pb-2">
-        <Button
-          type="button"
-          variant="outline"
-          className="h-12 rounded-full"
-          onClick={() => room.setMuted(!room.muted)}
-        >
-          <MicOff className="size-4" />
-          {room.muted ? "Unmute" : "Mute"}
-        </Button>
+        {room.micEnabled ? (
+          <Button
+            type="button"
+            variant="outline"
+            className="h-12 rounded-full"
+            onClick={() => room.setMuted(!room.muted)}
+          >
+            <MicOff className="size-4" />
+            {room.muted ? "Unmute" : "Mute"}
+          </Button>
+        ) : null}
         <Button
           type="button"
           className="h-12 rounded-full bg-violet-500 text-white hover:bg-violet-400"
@@ -115,5 +131,43 @@ export default function RoomPage() {
         </Button>
       </div>
     </main>
+  );
+}
+
+function RoomTextComposer({
+  busy,
+  onSubmit,
+}: {
+  busy: boolean;
+  onSubmit: (text: string) => void;
+}) {
+  const [draft, setDraft] = useState("");
+  return (
+    <form
+      className="flex w-full max-w-lg gap-2"
+      onSubmit={(event) => {
+        event.preventDefault();
+        const text = draft.trim();
+        if (!text) return;
+        setDraft("");
+        onSubmit(text);
+      }}
+    >
+      <Input
+        value={draft}
+        onChange={(event) => setDraft(event.target.value)}
+        placeholder="What do you want to watch?"
+        className="h-12 rounded-full bg-white/5 px-4 text-sm"
+        disabled={busy}
+        aria-label="Type what you want to watch"
+      />
+      <Button
+        type="submit"
+        className="h-12 rounded-full bg-violet-500 text-white hover:bg-violet-400"
+        disabled={busy || !draft.trim()}
+      >
+        Send
+      </Button>
+    </form>
   );
 }

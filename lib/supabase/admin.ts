@@ -7,7 +7,8 @@ let cached: SupabaseClient | null = null;
 export function createAdminSupabase() {
   const env = requireSupabaseAdmin();
   if (cached) return cached;
-  cached = createClient(env.supabaseUrl, env.supabaseService, {
+  const key = env.supabaseService || env.supabaseAnon;
+  cached = createClient(env.supabaseUrl, key, {
     auth: { persistSession: false, autoRefreshToken: false },
     db: { retry: false },
     global: { fetch: timedFetch(2500) },

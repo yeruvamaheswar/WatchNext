@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { getUserMediaFn, microphoneBlockReason } from "@/lib/microphone";
 import { floatToWav } from "@/lib/wav";
 import type { ExtractedIntent, GuestLike, RecommendResult } from "@/lib/types";
 
@@ -27,6 +28,12 @@ export function useRoomSession({ userId, likes, likedVibes, onActiveChange }: Op
   const [extract, setExtract] = useState<ExtractedIntent | null>(null);
   const [result, setResult] = useState<RecommendResult | null>(null);
   const [busy, setBusy] = useState(false);
+  const [micEnabled, setMicEnabled] = useState(false);
+  const [micHint, setMicHint] = useState<string | null>(null);
+
+  useEffect(() => {
+    setMicHint(microphoneBlockReason());
+  }, []);
 
   const streamRef = useRef<MediaStream | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
@@ -136,6 +143,42 @@ export function useRoomSession({ userId, likes, likedVibes, onActiveChange }: Op
     [extract, likedVibes, likes, playTts, userId]
   );
 
+  const processText = useCallback(
+    async (text: string) => {
+      setLastHeard(text);
+      setTranscript((prev) => [...prev, text].slice(-24));
+
+      const prior = transcriptRef.current.join(" ");
+      const extracted = await fetch("/api/extract", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ transcript: text, prior }),
+      });
+      const extractedJson = await extracted.json();
+      if (!extracted.ok) {
+        toast.error(extractedJson.error || "Extract failed.");
+        setOrb(activeRef.current && streamRef.current ? "listening" : "idle");
+        return;
+      }
+      const intent = extractedJson.extract as ExtractedIntent;
+      setExtract(intent);
+
+      const entityCount =
+        intent.titles.length +
+        intent.people.length +
+        intent.genres.length +
+        intent.moods.length;
+      const shouldSuggest =
+        intent.watchIntent || entityCount >= 2 || WATCH_HINT.test(text);
+      if (shouldSuggest) {
+        await runSuggest(intent, intent.searchQuery || text);
+      } else {
+        setOrb(activeRef.current && streamRef.current ? "listening" : "idle");
+      }
+    },
+    [runSuggest]
+  );
+
   const handleUtterance = useCallback(
     async (wav: Blob) => {
       setOrb("thinking");
@@ -153,44 +196,43 @@ export function useRoomSession({ userId, likes, likedVibes, onActiveChange }: Op
         setOrb("listening");
         return;
       }
-      setLastHeard(text);
-      setTranscript((prev) => [...prev, text].slice(-24));
-
-      const prior = transcriptRef.current.join(" ");
-      const extracted = await fetch("/api/extract", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ transcript: text, prior }),
-      });
-      const extractedJson = await extracted.json();
-      if (!extracted.ok) {
-        toast.error(extractedJson.error || "Extract failed.");
-        setOrb("listening");
-        return;
-      }
-      const intent = extractedJson.extract as ExtractedIntent;
-      setExtract(intent);
-
-      const entityCount =
-        intent.titles.length +
-        intent.people.length +
-        intent.genres.length +
-        intent.moods.length;
-      const shouldSuggest =
-        intent.watchIntent || entityCount >= 2 || WATCH_HINT.test(text);
-      if (shouldSuggest) {
-        await runSuggest(intent, intent.searchQuery || text);
-      } else {
-        setOrb("listening");
-      }
+      await processText(text);
     },
-    [runSuggest]
+    [processText]
+  );
+
+  const submitText = useCallback(
+    async (raw: string) => {
+      const text = raw.trim();
+      if (!text) return;
+      setOrb("thinking");
+      await processText(text);
+    },
+    [processText]
+  );
+
+  const beginSession = useCallback(
+    (withMic: boolean) => {
+      activeRef.current = true;
+      setActive(true);
+      setMicEnabled(withMic);
+      setOrb(withMic ? "listening" : "idle");
+      onActiveChange?.(true);
+    },
+    [onActiveChange]
   );
 
   const start = useCallback(async () => {
     try {
       await unlockAudio();
-      const stream = await navigator.mediaDevices.getUserMedia({
+      const getUserMedia = getUserMediaFn();
+      if (!getUserMedia) {
+        const reason = microphoneBlockReason();
+        toast.error(reason ?? "Microphone is not available in this browser.");
+        beginSession(false);
+        return;
+      }
+      const stream = await getUserMedia({
         audio: {
           echoCancellation: true,
           noiseSuppression: true,
@@ -254,24 +296,23 @@ export function useRoomSession({ userId, likes, likedVibes, onActiveChange }: Op
       analyser.connect(processor);
       processor.connect(mute);
       mute.connect(ctx.destination);
-      activeRef.current = true;
-      setActive(true);
-      setOrb("listening");
-      onActiveChange?.(true);
+      beginSession(true);
     } catch (err) {
+      const blocked = microphoneBlockReason();
       toast.error(
-        err instanceof Error
-          ? err.message
-          : "Microphone permission is required for Room."
+        blocked ??
+          (err instanceof Error ? err.message : "Microphone permission is required for Room.")
       );
+      beginSession(false);
     }
-  }, [handleUtterance, onActiveChange, unlockAudio]);
+  }, [beginSession, handleUtterance, unlockAudio]);
 
   const stop = useCallback(() => {
     activeRef.current = false;
     stopCapture();
     audioElRef.current?.pause();
     setActive(false);
+    setMicEnabled(false);
     setOrb("idle");
     onActiveChange?.(false);
   }, [onActiveChange, stopCapture]);
@@ -295,8 +336,11 @@ export function useRoomSession({ userId, likes, likedVibes, onActiveChange }: Op
     extract,
     result,
     busy,
+    micEnabled,
+    micHint,
     start,
     stop,
+    submitText,
     suggest: () => runSuggest(extract),
   };
 }
