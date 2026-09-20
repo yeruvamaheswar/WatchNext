@@ -101,6 +101,40 @@ function parseMediaArg(): "movie" | "tv" | "all" {
   return "all";
 }
 
+function parseExcludeGenres() {
+  const idx = process.argv.indexOf("--exclude-genres");
+  if (idx < 0 || !process.argv[idx + 1]) return [];
+  return String(process.argv[idx + 1])
+    .split(",")
+    .map((part) => part.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+/** Anime, not Western animation: Japanese + Animation, or an explicit anime tag. */
+function isAnime(title: TmdbTitle) {
+  const genres = (title.genres ?? []).map((g) => g.toLowerCase());
+  const keywords = (title.keywords ?? []).map((k) => k.toLowerCase());
+  if (
+    genres.includes("anime") ||
+    keywords.some((k) => k === "anime" || k.includes("anime"))
+  ) {
+    return true;
+  }
+  return genres.includes("animation") && title.originalLanguage === "ja";
+}
+
+function shouldSkipTitle(
+  title: TmdbTitle,
+  excludeAnime: boolean,
+  excludeGenres: string[]
+) {
+  if (excludeAnime && isAnime(title)) return true;
+  if (!excludeGenres.length) return false;
+  return (title.genres ?? []).some((g) =>
+    excludeGenres.includes(g.toLowerCase())
+  );
+}
+
 async function loadExistingKeys(
   supabase: ReturnType<typeof createIngestSupabase>,
   media: "movie" | "tv" | "all"
@@ -124,62 +158,188 @@ async function loadExistingKeys(
   return keys;
 }
 
+async function loadCatalogTitles(
+  supabase: ReturnType<typeof createIngestSupabase>,
+  media: "movie" | "tv" | "all"
+) {
+  const titles: TmdbTitle[] = [];
+  let from = 0;
+  const pageSize = 1000;
+  while (true) {
+    let query = supabase
+      .from("titles")
+      .select(
+        "tmdb_id, media_type, name, year, overview, tagline, genres, keywords, top_cast, directors, creators, poster_path, backdrop_path, vote_average, popularity, runtime, original_language"
+      )
+      .range(from, from + pageSize - 1);
+    if (media !== "all") query = query.eq("media_type", media);
+    const { data, error } = await query;
+    if (error) throw new Error(`Failed loading catalog titles: ${error.message}`);
+    if (!data?.length) break;
+    for (const row of data) {
+      titles.push({
+        tmdbId: row.tmdb_id,
+        mediaType: row.media_type,
+        name: row.name,
+        year: row.year,
+        overview: row.overview ?? "",
+        tagline: row.tagline ?? "",
+        genres: row.genres ?? [],
+        keywords: row.keywords ?? [],
+        topCast: row.top_cast ?? [],
+        directors: row.directors ?? [],
+        creators: row.creators ?? [],
+        posterPath: row.poster_path,
+        backdropPath: row.backdrop_path,
+        voteAverage: row.vote_average,
+        popularity: row.popularity,
+        runtime: row.runtime,
+        originalLanguage: row.original_language,
+      });
+    }
+    if (data.length < pageSize) break;
+    from += pageSize;
+  }
+  return titles;
+}
+
 async function main() {
   requireTmdb();
   requireOpenAI();
   const limit = optionalArgValue("--limit");
   const media = parseMediaArg();
   const newOnly = process.argv.includes("--new-only");
+  const refresh = process.argv.includes("--refresh");
+  const excludeAnime = process.argv.includes("--exclude-anime");
+  const excludeGenres = parseExcludeGenres();
   const mediaTypes =
     media === "all" ? (["movie", "tv"] as const) : ([media] as const);
-  // With --new-only + --limit, keep paging until we fill the quota (capped).
-  const defaultPages = limit && !newOnly ? 1 : getServerEnv().ingestPages;
-  const pages = argValue("--pages", newOnly && limit ? 50 : defaultPages);
+  const filling = Boolean(
+    limit && (newOnly || excludeAnime || excludeGenres.length > 0)
+  );
+  // With filters / --new-only + --limit, keep paging until we fill the quota.
+  const defaultPages = limit && !filling ? 1 : getServerEnv().ingestPages;
+  const pages = Math.min(500, argValue("--pages", filling ? 50 : defaultPages));
   const skipEnrich = process.argv.includes("--quick");
+  const filterBits = [
+    excludeAnime ? "no anime" : "",
+    excludeGenres.length ? `exclude-genres ${excludeGenres.join(",")}` : "",
+  ]
+    .filter(Boolean)
+    .join(", ");
   console.log(
-    `WatchNext ingest: up to ${pages} TMDB pages of ${mediaTypes.join(" + ")}${
-      limit ? `, limit ${limit}` : ""
-    }${newOnly ? ", new-only" : ""}${skipEnrich ? " (quick, no keywords/cast)" : ""}.`
+    refresh
+      ? `WatchNext ingest: refresh existing catalog${
+          media !== "all" ? ` (${media})` : ""
+        }${skipEnrich ? " (quick, no keywords/cast)" : ""}.`
+      : `WatchNext ingest: up to ${pages} TMDB pages of ${mediaTypes.join(" + ")}${
+          limit ? `, limit ${limit}` : ""
+        }${newOnly ? ", new-only" : ""}${filterBits ? `, ${filterBits}` : ""}${
+          skipEnrich ? " (quick, no keywords/cast)" : ""
+        }.`
   );
   console.log(
     `Using ${aliasSources.openaiSource} and ${aliasSources.tmdbSource} (values not logged).`
   );
 
   const supabase = createIngestSupabase();
+  if (refresh) {
+    const catalog = await loadCatalogTitles(supabase, media);
+    const unique = takeLimit(catalog, limit, media);
+    console.log(`Unique titles to refresh: ${unique.length}`);
+    if (unique.length === 0) {
+      console.log("Nothing to refresh.");
+      return;
+    }
+    await upsertAndEmbed(supabase, unique, skipEnrich, media, limit);
+    return;
+  }
+
   const existing = newOnly ? await loadExistingKeys(supabase, media) : new Set<string>();
   if (newOnly) console.log(`Existing in DB (scope=${media}): ${existing.size}`);
 
   const collected: TmdbTitle[] = [];
   const seen = new Set<string>();
-  for (const mediaType of mediaTypes) {
-    for (let page = 1; page <= pages; page++) {
-      if (limit && collected.length >= limit) break;
+  const skipped = { anime: 0, genre: 0 };
+  const collectLimit =
+    limit && (excludeAnime || excludeGenres.length)
+      ? Math.ceil(limit * 1.12)
+      : limit;
+  const movieTarget =
+    media === "all" && collectLimit ? Math.ceil(collectLimit / 2) : collectLimit;
+  const tvTarget =
+    media === "all" && collectLimit
+      ? collectLimit - Math.ceil(collectLimit / 2)
+      : collectLimit;
+  const countOf = (mediaType: "movie" | "tv") =>
+    collected.filter((title) => title.mediaType === mediaType).length;
+  const typeTarget = (mediaType: "movie" | "tv") =>
+    mediaType === "movie" ? movieTarget : tvTarget;
+  const filled = () =>
+    mediaTypes.every(
+      (mediaType) => !typeTarget(mediaType) || countOf(mediaType) >= typeTarget(mediaType)!
+    );
+
+  for (let page = 1; page <= pages && !filled(); page++) {
+    for (const mediaType of mediaTypes) {
+      const target = typeTarget(mediaType);
+      if (target && countOf(mediaType) >= target) continue;
       const batch = await fetchPopular(mediaType, page);
       let added = 0;
       for (const title of batch) {
         const key = `${title.mediaType}:${title.tmdbId}`;
         if (seen.has(key)) continue;
         if (newOnly && existing.has(key)) continue;
+        if (shouldSkipTitle(title, excludeAnime, excludeGenres)) {
+          seen.add(key);
+          if (excludeAnime && isAnime(title)) skipped.anime += 1;
+          else skipped.genre += 1;
+          continue;
+        }
         seen.add(key);
         collected.push(title);
         added++;
-        if (limit && collected.length >= limit) break;
+        if (target && countOf(mediaType) >= target) break;
       }
       console.log(
         `  ${mediaType} page ${page}: ${batch.length} fetched, ${added} kept (pool ${collected.length})`
       );
-      if (batch.length === 0) break;
+      if (batch.length === 0 && mediaTypes.length === 1) break;
     }
   }
+  if (skipped.anime || skipped.genre) {
+    console.log(
+      `  skipped ${skipped.anime} anime, ${skipped.genre} excluded-genre titles`
+    );
+  }
 
-  const unique = takeLimit(collected, limit, media);
+  const unique = takeLimit(collected, collectLimit, media);
   console.log(`Unique titles to ingest: ${unique.length}`);
   if (unique.length === 0) {
     console.log("Nothing new to ingest.");
     return;
   }
 
-  const enriched = skipEnrich
+  await upsertAndEmbed(supabase, unique, skipEnrich, media, limit, {
+    excludeAnime,
+    excludeGenres,
+    skipped,
+  });
+}
+
+async function upsertAndEmbed(
+  supabase: ReturnType<typeof createIngestSupabase>,
+  unique: TmdbTitle[],
+  skipEnrich: boolean,
+  media: "movie" | "tv" | "all",
+  limit: number | null,
+  filters?: {
+    excludeAnime: boolean;
+    excludeGenres: string[];
+    skipped: { anime: number; genre: number };
+  }
+) {
+  const enrichedRaw = skipEnrich
     ? unique
     : await mapPool(unique, 4, async (title, i) => {
         try {
@@ -193,6 +353,26 @@ async function main() {
           return title;
         }
       });
+  const excludeAnime = filters?.excludeAnime ?? false;
+  const excludeGenres = filters?.excludeGenres ?? [];
+  const skipped = filters?.skipped ?? { anime: 0, genre: 0 };
+  const enriched = takeLimit(
+    enrichedRaw.filter((title) => {
+      if (!shouldSkipTitle(title, excludeAnime, excludeGenres)) return true;
+      if (excludeAnime && isAnime(title)) skipped.anime += 1;
+      else skipped.genre += 1;
+      return false;
+    }),
+    limit,
+    media
+  );
+  if (enriched.length !== unique.length) {
+    console.log(
+      `  after enrich filters: ${enriched.length} titles (dropped ${
+        unique.length - enriched.length
+      })`
+    );
+  }
 
   const upserts = enriched.map((t) => ({
     tmdb_id: t.tmdbId,
@@ -204,6 +384,8 @@ async function main() {
     genres: t.genres,
     keywords: t.keywords,
     top_cast: t.topCast,
+    directors: t.directors,
+    creators: t.creators,
     poster_path: t.posterPath,
     backdrop_path: t.backdropPath,
     vote_average: t.voteAverage,
@@ -221,15 +403,15 @@ async function main() {
     console.log(`  upserted titles ${Math.min(i + 100, upserts.length)}/${upserts.length}`);
   }
 
-  const wanted = new Set(unique.map((t) => `${t.mediaType}:${t.tmdbId}`));
+  const wanted = new Set(enriched.map((t) => `${t.mediaType}:${t.tmdbId}`));
   const { data: storedAll, error: storedError } = await supabase
     .from("titles")
     .select(
-      "id, tmdb_id, media_type, name, year, overview, tagline, genres, keywords, top_cast"
+      "id, tmdb_id, media_type, name, year, overview, tagline, genres, keywords, top_cast, directors, creators"
     )
     .in(
       "tmdb_id",
-      unique.map((t) => t.tmdbId)
+      enriched.map((t) => t.tmdbId)
     );
   if (storedError) throw new Error(storedError.message);
   const stored = (storedAll ?? []).filter((row) =>
@@ -245,6 +427,8 @@ async function main() {
       genres: row.genres ?? [],
       keywords: row.keywords ?? [],
       topCast: row.top_cast ?? [],
+      directors: row.directors ?? [],
+      creators: row.creators ?? [],
       mediaType: row.media_type,
     })
   );

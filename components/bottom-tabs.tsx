@@ -9,7 +9,7 @@ export function BottomTabs() {
   const pathname = usePathname();
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-30 bg-background md:hidden"
+      className="pointer-events-none fixed inset-x-0 bottom-0 z-30 bg-transparent md:hidden"
       style={{ paddingBottom: "max(0.5rem, env(safe-area-inset-bottom))" }}
     >
       <ul className="mx-auto flex max-w-lg">
@@ -21,7 +21,7 @@ export function BottomTabs() {
               <Link
                 href={tab.href}
                 className={cn(
-                  "flex min-h-14 flex-col items-center justify-center gap-1 text-xs",
+                  "pointer-events-auto flex min-h-14 flex-col items-center justify-center gap-1 text-xs [text-shadow:0_1px_8px_rgba(10,4,20,0.85)]",
                   current ? "text-violet-300" : "text-muted-foreground"
                 )}
               >

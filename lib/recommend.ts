@@ -33,6 +33,8 @@ type MatchRow = {
   popularity: number | null;
   tagline: string | null;
   top_cast: string[] | null;
+  directors: string[] | null;
+  creators: string[] | null;
   distance: number;
 };
 
@@ -142,6 +144,9 @@ async function llmPick(
     genres: c.genres,
     overview: (c.overview ?? "").slice(0, 280),
     voteAverage: c.vote_average,
+    directors: c.directors ?? [],
+    creators: c.creators ?? [],
+    topCast: (c.top_cast ?? []).slice(0, 8),
   }));
 
   const isGroup = opts?.mode === "group";
@@ -228,6 +233,29 @@ async function withTmdbPosters(titles: SuggestedTitle[]): Promise<SuggestedTitle
   );
 }
 
+async function attachPeople(rows: MatchRow[]): Promise<MatchRow[]> {
+  if (rows.length === 0) return rows;
+  const supabase = tryCreateAdminSupabase();
+  if (!supabase) return rows;
+  const { data } = await supabase
+    .from("titles")
+    .select("id, directors, creators, top_cast")
+    .in(
+      "id",
+      rows.map((row) => row.id)
+    );
+  const byId = new Map((data ?? []).map((row) => [row.id, row]));
+  return rows.map((row) => {
+    const extra = byId.get(row.id);
+    return {
+      ...row,
+      directors: extra?.directors ?? row.directors ?? [],
+      creators: extra?.creators ?? row.creators ?? [],
+      top_cast: extra?.top_cast ?? row.top_cast ?? [],
+    };
+  });
+}
+
 function toSuggested(row: MatchRow, reason: string): SuggestedTitle {
   return {
     id: row.id,
@@ -242,6 +270,8 @@ function toSuggested(row: MatchRow, reason: string): SuggestedTitle {
     voteAverage: row.vote_average,
     tagline: row.tagline,
     topCast: row.top_cast ?? [],
+    directors: row.directors ?? [],
+    creators: row.creators ?? [],
     reason,
     distance: row.distance,
   };
@@ -340,7 +370,7 @@ export async function recommend(input: RecommendInput): Promise<RecommendResult>
     );
   }
 
-  const rows = (data ?? []) as MatchRow[];
+  const rows = await attachPeople((data ?? []) as MatchRow[]);
   if (rows.length === 0) {
     throw new ConfigError(
       "No titles matched after filters.",

@@ -216,7 +216,7 @@ export function VoiceOrb({
   const frame = cn(
     "grid place-items-center",
     clickable &&
-      "rounded-full bg-transparent p-0 outline-none transition-transform duration-200 focus-visible:ring-2 focus-visible:ring-violet-300/50",
+      "pointer-events-auto rounded-full bg-transparent p-0 outline-none transition-transform duration-200 focus-visible:ring-2 focus-visible:ring-violet-300/50",
     clickable && !disabled && "cursor-pointer hover:scale-[1.03]",
     clickable && disabled && "cursor-wait"
   );

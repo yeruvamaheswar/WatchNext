@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { Clapperboard, Mic, MicOff, Search, Users, X } from "lucide-react";
 import { BrandLogo } from "@/components/brand-logo";
 import { VoiceOrb } from "@/components/voice-orb";
@@ -52,8 +53,13 @@ export default function RoomPage() {
       />
     );
 
+    const quoteProps = {
+      busy: room.busy,
+      lastHeard: room.lastHeard,
+    };
+
     return (
-      <main className="mx-auto flex h-full max-w-xl flex-col overflow-hidden px-6 py-6 md:px-8">
+      <main className="mx-auto flex h-full w-full max-w-5xl flex-col overflow-hidden px-6 pt-6 pb-2 md:px-8 md:py-6">
         <div className="shrink-0 space-y-3">
           <div className="flex items-center gap-3">
             <h1 className="sr-only">Room</h1>
@@ -74,7 +80,7 @@ export default function RoomPage() {
         </div>
         <div className="flex min-h-0 flex-1 flex-col">
           {hasResults && room.result ? (
-            <div className="min-h-0 flex-1 py-4">
+            <div className="min-h-0 flex-1 overflow-y-auto py-4 scrollbar-none">
               <PosterTiles titles={room.result.titles} layout="rail" />
             </div>
           ) : (
@@ -82,17 +88,25 @@ export default function RoomPage() {
               {startOrb}
             </div>
           )}
-          <div className="flex shrink-0 flex-col items-center gap-3 pt-2">
-            {room.busy ? (
-              <p className="text-center text-xs text-violet-200/55">Finding a pick…</p>
-            ) : room.lastHeard ? (
-              <p className="max-w-sm text-center text-sm text-violet-100/80">
-                “{room.lastHeard}”
-              </p>
-            ) : null}
+          <div className="hidden shrink-0 flex-col items-center gap-3 pt-2 md:flex">
+            <HeardQuote {...quoteProps} />
             {hasResults ? startOrb : null}
           </div>
+          {hasResults ? (
+            <div className="h-28 shrink-0 md:hidden" aria-hidden />
+          ) : null}
         </div>
+        <MobileOrbDock>
+          <HeardQuote {...quoteProps} />
+          {hasResults ? (
+            <VoiceOrb
+              state={idleOrb}
+              size="sm"
+              onClick={startSession}
+              disabled={connecting}
+            />
+          ) : null}
+        </MobileOrbDock>
       </main>
     );
   }
@@ -102,6 +116,45 @@ export default function RoomPage() {
   }
 
   return <LiveSessionView room={room} />;
+}
+
+function HeardQuote({
+  busy,
+  lastHeard,
+}: {
+  busy: boolean;
+  lastHeard: string;
+}) {
+  if (busy) {
+    return (
+      <p className="text-center text-xs text-violet-200/55">Finding a pick…</p>
+    );
+  }
+  if (!lastHeard) return null;
+  return (
+    <p className="max-w-sm text-center text-sm text-violet-100/80">
+      “{lastHeard}”
+    </p>
+  );
+}
+
+function MobileOrbDock({ children }: { children: ReactNode }) {
+  const [host, setHost] = useState<HTMLElement | null>(null);
+
+  useEffect(() => {
+    setHost(document.body);
+  }, []);
+
+  if (!host) return null;
+
+  return createPortal(
+    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center px-6 pb-[calc(2.75rem+env(safe-area-inset-bottom,0px))] md:hidden">
+      <div className="flex w-fit flex-col items-center gap-3">
+        {children}
+      </div>
+    </div>,
+    host
+  );
 }
 
 function GroupModeToggle({
