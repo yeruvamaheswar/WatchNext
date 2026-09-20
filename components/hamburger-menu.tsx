@@ -4,11 +4,10 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Menu, SlidersHorizontal, UserRound, Settings, X } from "lucide-react";
+import { SlidersHorizontal, UserRound, Settings, X } from "lucide-react";
 import { BrandLogo } from "@/components/brand-logo";
 import { Button } from "@/components/ui/button";
 import { useWatchNext } from "@/hooks/use-watchnext";
-import { PWA_HEADER_PAD } from "@/lib/pwa";
 
 const links = [
   { href: "/preferences", icon: SlidersHorizontal, label: "Preferences" },
@@ -19,6 +18,7 @@ const links = [
 export function HamburgerMenu() {
   const { guest, isGuest } = useWatchNext();
   const [open, setOpen] = useState(false);
+  const [headerOffset, setHeaderOffset] = useState(0);
   const pathname = usePathname();
   const router = useRouter();
 
@@ -29,6 +29,16 @@ export function HamburgerMenu() {
   useEffect(() => {
     setOpen(false);
   }, [pathname]);
+
+  useEffect(() => {
+    const header = document.querySelector("[data-wn-header]");
+    if (!(header instanceof HTMLElement)) return;
+    const update = () => setHeaderOffset(header.getBoundingClientRect().height);
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(header);
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -56,17 +66,16 @@ export function HamburgerMenu() {
           >
             <button
               type="button"
-              className="absolute inset-0 bg-black/60"
+              className="absolute inset-0 bg-transparent"
               aria-label="Dismiss menu"
               onClick={() => setOpen(false)}
             />
             <aside
-              className="absolute inset-y-0 left-0 z-[1] flex w-[min(20rem,86vw)] flex-col border-r border-white/10 bg-[#12081c] shadow-2xl"
-              style={{ paddingTop: PWA_HEADER_PAD }}
+              className="absolute bottom-0 left-0 z-[1] flex w-[min(20rem,86vw)] flex-col border-r border-white/10 bg-[#12081c] shadow-2xl"
+              style={{ top: headerOffset }}
             >
-              <div className="flex items-start justify-between gap-3 px-5 pb-4">
+              <div className="flex items-start justify-between gap-3 px-5 pt-3 pb-4">
                 <div className="min-w-0 space-y-1">
-                  <BrandLogo size="md" />
                   <p className="text-sm text-muted-foreground">
                     {guest.displayName} · {isGuest ? "Guest" : "Signed in"}
                   </p>
@@ -110,18 +119,16 @@ export function HamburgerMenu() {
 
   return (
     <>
-      <Button
+      <button
         type="button"
-        variant="ghost"
-        size="icon-lg"
-        className="relative z-[90] size-11 rounded-sm"
+        className="relative z-[90] inline-flex items-center rounded-md outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-violet-400/60"
         aria-label={open ? "Close menu" : "Open menu"}
         aria-expanded={open}
         data-testid="open-menu"
         onClick={() => setOpen((value) => !value)}
       >
-        {open ? <X className="size-5" /> : <Menu className="size-5" />}
-      </Button>
+        <BrandLogo />
+      </button>
       {drawer}
     </>
   );

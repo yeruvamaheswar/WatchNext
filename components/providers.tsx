@@ -13,7 +13,12 @@ export function Providers({ children }: { children: React.ReactNode }) {
       <WatchNextProvider>
         <RoomUiProvider>
           {children}
-          <Toaster theme="dark" position="bottom-center" />
+          <Toaster
+            theme="dark"
+            position="top-center"
+            offset={{ top: "calc(3.75rem + var(--wn-safe-top, 0px))" }}
+            mobileOffset={{ top: "calc(3.75rem + var(--wn-safe-top, 0px))" }}
+          />
           <PwaRegister />
           <SafeAreaSync />
         </RoomUiProvider>

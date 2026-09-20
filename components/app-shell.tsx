@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { BottomTabs } from "@/components/bottom-tabs";
-import { BrandLogo } from "@/components/brand-logo";
 import { HamburgerMenu } from "@/components/hamburger-menu";
 import { useRoomUi } from "@/hooks/use-room-ui";
 import { APP_TABS } from "@/lib/nav";
@@ -18,12 +17,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <div className="fixed inset-0 flex flex-col overflow-hidden bg-background">
       {!active ? (
         <header
-          className="relative z-20 shrink-0 bg-background px-2 pb-1"
+          data-wn-header
+          className="relative z-[210] shrink-0 bg-background px-2 pb-1"
           style={{ paddingTop: PWA_HEADER_PAD }}
         >
           <div className="relative flex items-center gap-2">
             <HamburgerMenu />
-            <BrandLogo href="/home" />
             <nav className="ml-auto hidden items-center pr-3 md:flex">
               {APP_TABS.map((tab) => {
                 const current = pathname === tab.href;

@@ -7,7 +7,7 @@ Local-only Next.js PWA: swipe three onboarding questions, then pick something to
 The app **boots** with empty keys. You can:
 
 - Complete 3-question swipe onboarding (static popular titles + vibe cards)
-- Use Home / Room tabs and the hamburger (Preferences, User, Account)
+- Use Home / Room tabs, and tap the WatchNext logo for Preferences, User, and Account
 - Stay on a guest session
 
 Clear errors appear when a key is missing:
