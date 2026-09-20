@@ -63,9 +63,10 @@ function mix(a, b, t) {
   return a + (b - a) * t;
 }
 
-/** Dark field + stacked poster cards + play skip. `markScale` ~0.62 any, ~0.42 maskable. */
+/** Dark field + stacked poster cards + play skip. RGB PNG8 (no alpha) — iOS rejects apple-touch-icons with an alpha channel. */
 function png(width, height = width, { markScale = 0.62 } = {}) {
-  const raw = Buffer.alloc((width * 4 + 1) * height);
+  const bpp = 3;
+  const raw = Buffer.alloc((width * bpp + 1) * height);
   const minSide = Math.min(width, height);
   const mark = minSide * markScale;
   const ox = (width - mark) / 2;
@@ -75,10 +76,10 @@ function png(width, height = width, { markScale = 0.62 } = {}) {
   const front = { x: 4.4, y: 11.2, w: 20, h: 22.8, r: 6.4 };
 
   for (let y = 0; y < height; y++) {
-    const row = y * (width * 4 + 1);
+    const row = y * (width * bpp + 1);
     raw[row] = 0;
     for (let x = 0; x < width; x++) {
-      const i = row + 1 + x * 4;
+      const i = row + 1 + x * bpp;
       const dx = x - width / 2;
       const dy = y - height / 2;
       const glow = Math.max(0, 1 - Math.hypot(dx, dy) / (minSide * 0.58));
@@ -119,17 +120,22 @@ function png(width, height = width, { markScale = 0.62 } = {}) {
       raw[i] = Math.min(255, r);
       raw[i + 1] = Math.min(255, g);
       raw[i + 2] = Math.min(255, b);
-      raw[i + 3] = 255;
     }
   }
   const ihdr = Buffer.alloc(13);
   ihdr.writeUInt32BE(width, 0);
   ihdr.writeUInt32BE(height, 4);
   ihdr[8] = 8;
-  ihdr[9] = 6;
+  ihdr[9] = 2;
+  const phys = Buffer.alloc(9);
+  phys.writeUInt32BE(2835, 0);
+  phys.writeUInt32BE(2835, 4);
+  phys[8] = 1;
   return Buffer.concat([
     Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
     chunk("IHDR", ihdr),
+    chunk("sRGB", Buffer.from([0])),
+    chunk("pHYs", phys),
     chunk("IDAT", deflateSync(raw)),
     chunk("IEND", Buffer.alloc(0)),
   ]);
@@ -201,6 +207,7 @@ for (const size of anySizes) {
 }
 writeFileSync(join(icons, "icon-192-maskable.png"), png(192, 192, { markScale: 0.42 }));
 writeFileSync(join(icons, "icon-512-maskable.png"), png(512, 512, { markScale: 0.42 }));
+writeFileSync(join(icons, "icon-1024.png"), png(1024));
 writeFileSync(join(icons, "favicon-16x16.png"), png(16));
 writeFileSync(join(icons, "favicon-32x32.png"), png(32));
 writeFileSync(join(icons, "apple-touch-icon-120.png"), png(120));
@@ -216,12 +223,24 @@ const favicon = ico([
 writeFileSync(join(appDir, "favicon.ico"), favicon);
 writeFileSync(join(root, "public", "favicon.ico"), favicon);
 writeFileSync(join(appDir, "icon.png"), png(32));
-writeFileSync(join(appDir, "apple-icon.png"), png(180));
 writeFileSync(join(appDir, "icon.svg"), iconSvg);
-writeFileSync(join(appDir, "opengraph-image.png"), png(1200, 630));
-writeFileSync(join(appDir, "twitter-image.png"), png(1200, 630));
-writeFileSync(join(root, "public", "apple-touch-icon.png"), png(180));
-writeFileSync(join(root, "public", "apple-touch-icon-precomposed.png"), png(180));
+writeFileSync(join(root, "public", "opengraph-image.png"), png(1200, 630));
+writeFileSync(join(root, "public", "twitter-image.png"), png(1200, 630));
+
+const apple180 = png(180);
+writeFileSync(join(root, "public", "apple-touch-icon.png"), apple180);
+writeFileSync(join(root, "public", "apple-touch-icon-precomposed.png"), apple180);
+const appleNamed = [
+  [120, "apple-touch-icon-120x120.png"],
+  [152, "apple-touch-icon-152x152.png"],
+  [167, "apple-touch-icon-167x167.png"],
+  [180, "apple-touch-icon-180x180.png"],
+];
+for (const [size, name] of appleNamed) {
+  const data = size === 180 ? apple180 : png(size);
+  writeFileSync(join(root, "public", name), data);
+  writeFileSync(join(root, "public", name.replace(".png", "-precomposed.png")), data);
+}
 writeFileSync(join(root, "public", "safari-pinned-tab.svg"), maskSvg);
 writeFileSync(join(root, "public", "browserconfig.xml"), browserConfig);
 

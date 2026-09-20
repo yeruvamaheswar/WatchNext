@@ -131,8 +131,7 @@
   }
   body {
     background-image:
-      radial-gradient(1200px 600px at 10% -10%, rgb(109 40 217 / 0.28), transparent 50%),
-      radial-gradient(800px 400px at 100% 0%, rgb(76 29 149 / 0.2), transparent 45%);
-    background-attachment: fixed;
+      radial-gradient(1200px 600px at 10% 18%, rgb(109 40 217 / 0.22), transparent 52%),
+      radial-gradient(800px 400px at 100% 28%, rgb(76 29 149 / 0.16), transparent 48%);
   }
 }

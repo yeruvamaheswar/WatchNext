@@ -148,7 +148,7 @@ function MobileOrbDock({ children }: { children: ReactNode }) {
   if (!host) return null;
 
   return createPortal(
-    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center px-6 pb-[calc(2.75rem+env(safe-area-inset-bottom,0px))] md:hidden">
+    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center px-6 pb-[calc(3.5rem+env(safe-area-inset-bottom,0px))] md:hidden">
       <div className="flex w-fit flex-col items-center gap-3">
         {children}
       </div>

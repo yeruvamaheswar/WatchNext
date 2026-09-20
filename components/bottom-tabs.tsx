@@ -8,10 +8,7 @@ import { cn } from "@/lib/utils";
 export function BottomTabs() {
   const pathname = usePathname();
   return (
-    <nav
-      className="pointer-events-none fixed inset-x-0 bottom-0 z-30 bg-transparent md:hidden"
-      style={{ paddingBottom: "max(0.5rem, env(safe-area-inset-bottom))" }}
-    >
+    <nav className="pointer-events-none fixed inset-x-0 bottom-0 z-30 bg-transparent md:hidden">
       <ul className="mx-auto flex max-w-lg">
         {APP_TABS.map((tab) => {
           const current = pathname === tab.href;
@@ -21,9 +18,12 @@ export function BottomTabs() {
               <Link
                 href={tab.href}
                 className={cn(
-                  "pointer-events-auto flex min-h-14 flex-col items-center justify-center gap-1 text-xs [text-shadow:0_1px_8px_rgba(10,4,20,0.85)]",
+                  "pointer-events-auto flex flex-col items-center justify-end gap-0.5 pt-1.5 text-[11px] [text-shadow:0_1px_8px_rgba(10,4,20,0.85)]",
                   current ? "text-violet-300" : "text-muted-foreground"
                 )}
+                style={{
+                  paddingBottom: "max(0.35rem, env(safe-area-inset-bottom, 0px))",
+                }}
               >
                 <Icon className={cn("size-5", current && "fill-violet-400/30")} />
                 {tab.label}

@@ -3,7 +3,9 @@ export function posterUrl(
   size: "w185" | "w342" | "w500" | "w780" | "original" = "w500"
 ) {
   if (!path) return null;
-  if (path.startsWith("http")) return path;
+  if (path.startsWith("http://") || path.startsWith("https://")) {
+    return path.replace(/^http:\/\//i, "https://");
+  }
   const normalized = path.startsWith("/") ? path : `/${path}`;
   return `https://image.tmdb.org/t/p/${size}${normalized}`;
 }
