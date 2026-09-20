@@ -37,7 +37,8 @@ const siteMetadata: Metadata = {
   },
   appleWebApp: {
     capable: true,
-    statusBarStyle: "black-translucent",
+    // Opaque. `black-translucent` always frosts the status-bar band on iOS.
+    statusBarStyle: "black",
     title: APP_NAME,
     startupImage: APPLE_SPLASH.flatMap((spec) => [
       {
@@ -54,6 +55,7 @@ const siteMetadata: Metadata = {
   // iOS Add to Home Screen still expects the apple-prefixed meta.
   other: {
     "apple-mobile-web-app-capable": "yes",
+    "apple-mobile-web-app-status-bar-style": "black",
     "mobile-web-app-capable": "yes",
     "msapplication-TileColor": APP_THEME_COLOR,
     "msapplication-TileImage": "/icons/icon-144.png",
@@ -116,7 +118,7 @@ export default function RootLayout({
       className={`dark ${geistSans.variable} ${geistMono.variable} h-full antialiased`}
       suppressHydrationWarning
     >
-      <body className="min-h-dvh bg-background font-sans text-foreground">
+      <body className="h-full min-h-full bg-background font-sans text-foreground">
         <Providers>{children}</Providers>
       </body>
     </html>

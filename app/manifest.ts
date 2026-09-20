@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { APP_BACKGROUND_COLOR, APP_DESCRIPTION, APP_NAME, APP_SHORT_NAME, APP_THEME_COLOR } from "@/lib/pwa";
+import { APP_BACKGROUND_COLOR, APP_DESCRIPTION, APP_NAME, APP_SHORT_NAME } from "@/lib/pwa";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
@@ -13,7 +13,8 @@ export default function manifest(): MetadataRoute.Manifest {
     scope: "/",
     display: "standalone",
     background_color: APP_BACKGROUND_COLOR,
-    theme_color: APP_THEME_COLOR,
+    // Must match the field color. Purple here becomes a frosted status-bar wash on iOS.
+    theme_color: APP_BACKGROUND_COLOR,
     orientation: "portrait",
     categories: ["entertainment"],
     icons: [

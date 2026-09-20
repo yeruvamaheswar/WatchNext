@@ -76,9 +76,7 @@ export function BrandWordmark({ className }: { className?: string }) {
       )}
     >
       <span className="text-violet-50">Watch</span>
-      <span className="bg-gradient-to-r from-violet-300 to-violet-100 bg-clip-text text-transparent">
-        Next
-      </span>
+      <span className="text-violet-200">Next</span>
     </span>
   );
 }

@@ -117,6 +117,15 @@
   --sidebar-ring: oklch(0.62 0.24 305);
 }
 
+:root {
+  --wn-safe-top: 0px;
+  --wn-safe-bottom: 0px;
+  --wn-safe-top: constant(safe-area-inset-top);
+  --wn-safe-bottom: constant(safe-area-inset-bottom);
+  --wn-safe-top: env(safe-area-inset-top, 0px);
+  --wn-safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -124,6 +133,9 @@
   html,
   body {
     @apply bg-background text-foreground;
+    height: 100%;
+    min-height: 100%;
+    min-height: -webkit-fill-available;
     min-height: 100dvh;
   }
   html {
