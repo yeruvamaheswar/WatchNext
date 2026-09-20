@@ -1,0 +1,15 @@
+---
+description: WatchNext engineering and secrets mandates for all agents
+alwaysApply: true
+---
+
+# WatchNext engineering
+
+Before code changes, read and follow `docs/ENGINEERING_PRINCIPLES.md` in order: requirements → delete → simplify → speed → automate.
+
+- Smallest focused change. No drive-by refactors, filler abstractions, gold-plating, or unsolicited docs. Match existing style.
+- Never commit, print, or put secrets/PII in client code or chat (`.env*`, API keys, tokens, service-role secrets, passwords, medical/family data).
+- Server secrets live in Vercel project env / local `.env.local` only. `NEXT_PUBLIC_*` is intentional public config only (e.g. Supabase URL + anon/publishable).
+- Teammates: repo `docs/ENGINEERING_PRINCIPLES.md` is authority. Do not load private persona hubs or family/identity pages for this project.
+- Optional Uma-only Notion (not required for teammates): Engineering Persona https://app.notion.com/p/3c609576726d81458959fbe1e06845ff — do not link or scrape private persona hubs from agent instructions.
+- When routes, hooks, `lib/` wiring, or flow-owning components change, update `docs/CODE_FLOW.md` in the same change (see `.cursor/rules/watchnext-code-flow.mdc`).
