@@ -1,0 +1,18 @@
+---
+description: Keep docs/CODE_FLOW.md in sync when code flow changes
+alwaysApply: true
+---
+
+# WatchNext code flow doc
+
+`docs/CODE_FLOW.md` is the living map of journeys, API → lib call graphs, and what each significant file does.
+
+When you add, remove, rename, or rewire any of the following, update `docs/CODE_FLOW.md` in the **same change**:
+
+- Routes under `app/` (pages or `app/api/**`)
+- Hooks, providers, or shell/onboarding gates
+- `lib/` modules or who calls whom (API → lib → OpenAI/TMDB/Supabase)
+- Flow-owning components (not pure `components/ui/*` atoms)
+- Ingest scripts, migrations, or catalog/taste/list tables
+
+Update the matching mermaid diagram(s) and table row(s). Mark newly unused APIs/libs, or clear unused notes when they gain callers. Do not invent parallel architecture docs. Never put secrets or PII in the doc.

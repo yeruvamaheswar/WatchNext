@@ -4,7 +4,7 @@ Next.js PWA that learns a quick taste profile, then picks something to watch. Us
 
 The catalog is TMDB titles plus OpenAI embeddings in Supabase Postgres (pgvector). Guests get an anonymous Auth session when that provider is enabled; lists also survive locally if Auth is down.
 
-The app is meant to run on your machine or a VM. TLS stays on the host (named tunnel or reverse proxy). This repo does not deploy to Vercel.
+The app runs on your machine, a VM, Docker, or a **private** Vercel production deploy. Secrets stay in server env (`.env.local` locally, Vercel project env in production) — never in git or the client bundle beyond intentional `NEXT_PUBLIC_*` config.
 
 ## Surfaces
 
@@ -33,9 +33,24 @@ The app **boots** with empty keys. You can finish onboarding on fallback cards, 
 | Posters / extra catalog metadata | `TMDB_API_KEY` |
 | Guest sync across devices | Hosted or local Supabase with **Anonymous** sign-ins enabled |
 
-Copy `.env.example` to `.env.local` and fill secrets there. Never commit `.env.local`.
+Copy `.env.example` to `.env.local` and fill secrets there. Never commit `.env.local` or paste real key values into docs/chat — **names only**.
 
 Canonical env names win when a GitHub alias is also set: `OPENAI_API_KEY` / `OPENAI_CONVERSTION_WATCHNEXT`, `TMDB_API_KEY` / `TMDB_API`. Supabase accepts `NEXT_PUBLIC_SUPABASE_ANON_KEY` or `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, and `SUPABASE_SERVICE_ROLE_KEY` or `SUPABASE_SECRET_KEY`.
+
+Do not put service-role or provider secret keys in `NEXT_PUBLIC_*`. Do not commit machine tokens such as `VERCEL_OIDC_TOKEN` if they appear in a local env file.
+
+## Private production (Vercel)
+
+Linked project: `watchnext` (team `silent-maverick07`). Production alias: `https://watchnext-beta.vercel.app`.
+
+1. Upload the same key **names** from `.env.local` into Vercel Production / Preview / Development (CLI `vercel env add` or dashboard). Use hosted Supabase — never `127.0.0.1` on Vercel.
+2. `npx vercel deploy --prod --yes`
+3. Enable **Deployment Protection** (Project → Settings → Deployment Protection → Vercel Authentication) so the URL is not public. Owners can probe with `npx vercel curl <url>`.
+4. On iPhone: open the HTTPS URL → sign in with Vercel when prompted → Safari Share → **Add to Home Screen**. Mic needs real HTTPS (PWA standalone works after add).
+
+Out of scope on Vercel: catalog ingest — run `npm run ingest` locally against hosted Supabase. Connecting GitHub for auto-deploys is optional (`vercel git connect`).
+
+Agent/engineering rules for this repo: [`docs/ENGINEERING_PRINCIPLES.md`](docs/ENGINEERING_PRINCIPLES.md) and [`AGENTS.md`](AGENTS.md). Code journeys and per-file map: [`docs/CODE_FLOW.md`](docs/CODE_FLOW.md).
 
 ## Run the app
 
