@@ -92,14 +92,31 @@ type ListItem = {
   original_language?: string;
 };
 
-export async function fetchPopular(mediaType: "movie" | "tv", page: number) {
-  const path = mediaType === "movie" ? "/movie/popular" : "/tv/popular";
-  const data = await tmdbFetch<{ results: ListItem[] }>(path, {
-    page: String(page),
+export async function searchTitle(
+  mediaType: "movie" | "tv",
+  query: string,
+  year?: number
+): Promise<TmdbTitle | null> {
+  const path = mediaType === "movie" ? "/search/movie" : "/search/tv";
+  const params: Record<string, string> = {
+    query,
     language: "en-US",
-  });
+    include_adult: "false",
+    page: "1",
+  };
+  if (year) {
+    if (mediaType === "movie") params.primary_release_year = String(year);
+    else params.first_air_date_year = String(year);
+  }
+  const data = await tmdbFetch<{ results: ListItem[] }>(path, params);
+  const item = data.results?.[0];
+  if (!item) return null;
+  return listItemToTitle(item, mediaType);
+}
+
+function listItemToTitle(item: ListItem, mediaType: "movie" | "tv"): TmdbTitle {
   const genreMap = mediaType === "movie" ? MOVIE_GENRES : TV_GENRES;
-  return (data.results ?? []).map((item) => ({
+  return {
     tmdbId: item.id,
     mediaType,
     name: (mediaType === "movie" ? item.title : item.name) || "Untitled",
@@ -107,17 +124,26 @@ export async function fetchPopular(mediaType: "movie" | "tv", page: number) {
     overview: item.overview ?? "",
     tagline: "",
     genres: (item.genre_ids ?? []).map((id) => genreMap[id]).filter(Boolean),
-    keywords: [] as string[],
-    topCast: [] as string[],
-    directors: [] as string[],
-    creators: [] as string[],
+    keywords: [],
+    topCast: [],
+    directors: [],
+    creators: [],
     posterPath: item.poster_path ?? null,
     backdropPath: item.backdrop_path ?? null,
     voteAverage: item.vote_average ?? null,
     popularity: item.popularity ?? null,
-    runtime: null as number | null,
+    runtime: null,
     originalLanguage: item.original_language ?? null,
-  })) satisfies TmdbTitle[];
+  };
+}
+
+export async function fetchPopular(mediaType: "movie" | "tv", page: number) {
+  const path = mediaType === "movie" ? "/movie/popular" : "/tv/popular";
+  const data = await tmdbFetch<{ results: ListItem[] }>(path, {
+    page: String(page),
+    language: "en-US",
+  });
+  return (data.results ?? []).map((item) => listItemToTitle(item, mediaType));
 }
 
 export async function enrichTitle(title: TmdbTitle): Promise<TmdbTitle> {

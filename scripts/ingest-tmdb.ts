@@ -10,10 +10,12 @@ import {
 } from "../lib/env";
 import { openaiModels } from "../lib/openai";
 import { timedFetch } from "../lib/timed-fetch";
+import { ERA_PACK } from "./era-pack";
 import {
   enrichTitle,
   fetchPopular,
   mapPool,
+  searchTitle,
   type TmdbTitle,
 } from "../lib/tmdb";
 
@@ -91,6 +93,52 @@ function takeLimit(
     picked.push(t);
   }
   return picked.slice(0, limit);
+}
+
+function parsePackArg() {
+  const idx = process.argv.indexOf("--pack");
+  if (idx < 0 || !process.argv[idx + 1]) return null;
+  const raw = String(process.argv[idx + 1]).toLowerCase().trim();
+  return raw === "era" ? "era" : null;
+}
+
+async function resolveEraPack() {
+  const resolved: TmdbTitle[] = [];
+  const seen = new Set<string>();
+  const queries: typeof ERA_PACK = [];
+  const queryKeys = new Set<string>();
+  for (const pick of ERA_PACK) {
+    const key = `${pick.mediaType}:${pick.query.toLowerCase()}:${pick.year ?? ""}`;
+    if (queryKeys.has(key)) continue;
+    queryKeys.add(key);
+    queries.push(pick);
+  }
+  let missed = 0;
+  for (const [i, pick] of queries.entries()) {
+    try {
+      const title = await searchTitle(pick.mediaType, pick.query, pick.year);
+      if (!title) {
+        missed += 1;
+        console.warn(`  miss: ${pick.query} (${pick.mediaType}${pick.year ? ` ${pick.year}` : ""})`);
+        continue;
+      }
+      const key = `${title.mediaType}:${title.tmdbId}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      resolved.push(title);
+    } catch (err) {
+      missed += 1;
+      console.warn(
+        `  miss: ${pick.query}:`,
+        err instanceof Error ? err.message : err
+      );
+    }
+    if ((i + 1) % 40 === 0) {
+      console.log(`  resolved ${resolved.length} unique / ${i + 1} queries`);
+    }
+  }
+  if (missed) console.log(`  ${missed} searches found nothing`);
+  return resolved;
 }
 
 function parseMediaArg(): "movie" | "tv" | "all" {
@@ -208,6 +256,7 @@ async function main() {
   requireOpenAI();
   const limit = optionalArgValue("--limit");
   const media = parseMediaArg();
+  const pack = parsePackArg();
   const newOnly = process.argv.includes("--new-only");
   const refresh = process.argv.includes("--refresh");
   const excludeAnime = process.argv.includes("--exclude-anime");
@@ -228,7 +277,11 @@ async function main() {
     .filter(Boolean)
     .join(", ");
   console.log(
-    refresh
+    pack
+      ? `WatchNext ingest: ${pack} pack${limit ? `, limit ${limit}` : ""}${
+          newOnly ? ", new-only" : ""
+        }${skipEnrich ? " (quick, no keywords/cast)" : ""}.`
+      : refresh
       ? `WatchNext ingest: refresh existing catalog${
           media !== "all" ? ` (${media})` : ""
         }${skipEnrich ? " (quick, no keywords/cast)" : ""}.`
@@ -243,6 +296,24 @@ async function main() {
   );
 
   const supabase = createIngestSupabase();
+  if (pack === "era") {
+    console.log(`Resolving ${ERA_PACK.length} era-pack searches…`);
+    const resolved = await resolveEraPack();
+    const existing = newOnly ? await loadExistingKeys(supabase, "all") : new Set<string>();
+    const fresh = resolved.filter(
+      (title) => !existing.has(`${title.mediaType}:${title.tmdbId}`)
+    );
+    const unique = takeLimit(fresh, limit, "all");
+    console.log(
+      `Era pack: ${resolved.length} resolved, ${fresh.length} new, ingesting ${unique.length}.`
+    );
+    if (unique.length === 0) {
+      console.log("Nothing new to ingest.");
+      return;
+    }
+    await upsertAndEmbed(supabase, unique, skipEnrich, "all", limit);
+    return;
+  }
   if (refresh) {
     const catalog = await loadCatalogTitles(supabase, media);
     const unique = takeLimit(catalog, limit, media);
