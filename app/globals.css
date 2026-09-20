@@ -137,6 +137,7 @@
     min-height: 100%;
     min-height: -webkit-fill-available;
     min-height: 100dvh;
+    overscroll-behavior-x: none;
   }
   html {
     @apply font-sans;
