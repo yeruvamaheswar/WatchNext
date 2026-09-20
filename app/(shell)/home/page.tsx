@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { HealthBanner } from "@/components/health-banner";
+import { MobileOrbDock } from "@/components/mobile-orb-dock";
 import { PosterTiles } from "@/components/poster-tiles";
 import { WatchOrb } from "@/components/watch-orb";
 import { useWatchNext } from "@/hooks/use-watchnext";
@@ -49,16 +50,12 @@ export default function HomePage() {
     }
   }
 
-  const action = (
-    <WatchOrb
-      loading={loading}
-      compact={Boolean(result)}
-      onClick={() => void recommend()}
-    />
+  const askAgain = (
+    <WatchOrb loading={loading} compact onClick={() => void recommend()} />
   );
 
   return (
-    <main className="mx-auto flex h-full max-w-lg flex-col px-4 py-6">
+    <main className="mx-auto flex min-h-full max-w-lg flex-col px-4 py-6">
       <h1 className="sr-only">Home</h1>
       <HealthBanner />
       {error ? (
@@ -73,13 +70,25 @@ export default function HomePage() {
         </div>
       ) : null}
       {result ? (
-        <div className="flex min-h-0 flex-1 flex-col gap-6">
-          <div className="flex justify-center">{action}</div>
-          <PosterTiles titles={result.titles} />
+        <div className="flex flex-col gap-4 md:gap-6">
+          <div className="hidden justify-center md:flex">{askAgain}</div>
+          <PosterTiles titles={result.titles} swipeable />
+          <div className="h-16 shrink-0 md:hidden" aria-hidden />
         </div>
       ) : (
-        <div className="flex min-h-0 flex-1 items-center justify-center">{action}</div>
+        <div className="flex min-h-0 flex-1 items-center justify-center">
+          <WatchOrb loading={loading} onClick={() => void recommend()} />
+        </div>
       )}
+      <MobileOrbDock>
+        {result ? (
+          <WatchOrb
+            loading={loading}
+            docked
+            onClick={() => void recommend()}
+          />
+        ) : null}
+      </MobileOrbDock>
     </main>
   );
 }
