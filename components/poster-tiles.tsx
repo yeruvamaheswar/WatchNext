@@ -128,6 +128,7 @@ function PosterTile({
 
   return (
     <article
+      ref={swipe.nodeRef}
       data-testid={swipeable ? "home-swipe-card" : undefined}
       className={cn(
         "animate-in slide-in-from-bottom-4 fade-in-0 group overflow-hidden border border-white/10 bg-card text-left shadow-lg duration-300",
@@ -141,7 +142,8 @@ function PosterTile({
           ? {
               transform: `translateX(${swipe.dx}px) rotate(${swipe.rotate}deg)`,
               transition: swipe.dragging ? "none" : "transform 180ms ease",
-              touchAction: "pan-y",
+              touchAction: swipe.dragging ? "none" : "pan-y",
+              overscrollBehaviorX: "none",
             }
           : undefined
       }
@@ -245,6 +247,7 @@ function useCardSwipe({
   const [dx, setDx] = useState(0);
   const [dragging, setDragging] = useState(false);
   const [mobile, setMobile] = useState(false);
+  const nodeRef = useRef<HTMLElement | null>(null);
   const startX = useRef(0);
   const startY = useRef(0);
   const axis = useRef<"x" | "y" | null>(null);
@@ -277,6 +280,34 @@ function useCardSwipe({
       window.clearTimeout(leaveTimer.current);
       window.removeEventListener("scroll", onScroll, true);
     };
+  }, [active]);
+
+  useEffect(() => {
+    if (!active) return;
+    const node = nodeRef.current;
+    if (!node) return;
+
+    function onTouchMove(event: TouchEvent) {
+      if (!tracking.current) return;
+      const touch = event.touches[0];
+      if (!touch) return;
+      const nextDx = touch.clientX - startX.current;
+      const nextDy = touch.clientY - startY.current;
+      if (!axis.current) {
+        const fromEdge = startX.current < 28 && nextDx > 0;
+        if (fromEdge && Math.abs(nextDx) >= 6) {
+          axis.current = "x";
+        } else if (Math.abs(nextDx) < 8 && Math.abs(nextDy) < 8) {
+          return;
+        } else if (Math.abs(nextDx) > Math.abs(nextDy) * 1.1) {
+          axis.current = "x";
+        }
+      }
+      if (axis.current === "x") event.preventDefault();
+    }
+
+    node.addEventListener("touchmove", onTouchMove, { passive: false });
+    return () => node.removeEventListener("touchmove", onTouchMove);
   }, [active]);
 
   function reset() {
@@ -315,6 +346,10 @@ function useCardSwipe({
       }
     }
     if (axis.current !== "x") return;
+    if (!event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.setPointerCapture(event.pointerId);
+    }
+    if (!dragging) setDragging(true);
     setDx(nextDx);
   }
 
@@ -361,6 +396,7 @@ function useCardSwipe({
     enabled: active,
     dx,
     dragging,
+    nodeRef,
     rotate: Math.max(-18, Math.min(18, dx / 12)),
     likeOpacity: Math.max(0, Math.min(1, dx / 120)),
     nopeOpacity: Math.max(0, Math.min(1, -dx / 120)),

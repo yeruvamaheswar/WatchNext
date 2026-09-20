@@ -81,13 +81,18 @@ export function SwipeDeck({
         setDx(0);
       }
     }
+    function onTouchMove(event: TouchEvent) {
+      if (draggingRef.current) event.preventDefault();
+    }
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", up);
     window.addEventListener("pointercancel", up);
+    window.addEventListener("touchmove", onTouchMove, { passive: false });
     return () => {
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
       window.removeEventListener("pointercancel", up);
+      window.removeEventListener("touchmove", onTouchMove);
     };
   }, []);
 
