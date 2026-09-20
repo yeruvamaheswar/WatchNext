@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { APP_TABS } from "@/lib/nav";
+import { PWA_FOOTER_PAD } from "@/lib/pwa";
 import { cn } from "@/lib/utils";
 
 export function BottomTabs() {
@@ -22,7 +23,7 @@ export function BottomTabs() {
                   current ? "text-violet-300" : "text-muted-foreground"
                 )}
                 style={{
-                  paddingBottom: "max(0.35rem, env(safe-area-inset-bottom, 0px))",
+                  paddingBottom: PWA_FOOTER_PAD,
                 }}
               >
                 <Icon className={cn("size-5", current && "fill-violet-400/30")} />

@@ -11,6 +11,7 @@ import { useGroupListen } from "@/hooks/use-group-listen";
 import { useRoomSession } from "@/hooks/use-room-session";
 import { useRoomUi } from "@/hooks/use-room-ui";
 import { useWatchNext } from "@/hooks/use-watchnext";
+import { PWA_FOOTER_PAD, PWA_HEADER_PAD } from "@/lib/pwa";
 import { cn } from "@/lib/utils";
 
 export default function RoomPage() {
@@ -148,7 +149,7 @@ function MobileOrbDock({ children }: { children: ReactNode }) {
   if (!host) return null;
 
   return createPortal(
-    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center px-6 pb-[calc(3.5rem+env(safe-area-inset-bottom,0px))] md:hidden">
+    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center px-6 pb-[calc(3.25rem+var(--wn-safe-bottom,0px))] md:hidden">
       <div className="flex w-fit flex-col items-center gap-3">
         {children}
       </div>
@@ -283,14 +284,11 @@ function GroupSessionView({
   );
 
   return (
-    <main
-      className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-[#0a0414] px-3 md:px-8"
-      style={{
-        paddingTop: "max(0.5rem, env(safe-area-inset-top))",
-        paddingBottom: "max(0.4rem, env(safe-area-inset-bottom))",
-      }}
-    >
-      <div className="flex shrink-0 items-center justify-between gap-3">
+    <main className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-[#0a0414] px-3 md:px-8">
+      <div
+        className="flex shrink-0 items-center justify-between gap-3 bg-[#0a0414]"
+        style={{ paddingTop: PWA_HEADER_PAD }}
+      >
         <div className="flex min-w-0 items-center gap-3">
           <BrandLogo />
           <p className="hidden text-[11px] font-medium tracking-[0.16em] text-violet-300 uppercase sm:block">
@@ -304,7 +302,10 @@ function GroupSessionView({
 
       {hasResults && group.result ? (
         <div className="grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)_auto] gap-2 py-2 md:grid-cols-[17rem_minmax(0,1fr)] md:grid-rows-1 md:gap-8 md:py-4">
-          <div className="order-2 flex flex-col items-center justify-end md:order-1 md:justify-center">
+          <div
+            className="order-2 flex flex-col items-center justify-end md:order-1 md:justify-center"
+            style={{ paddingBottom: PWA_FOOTER_PAD }}
+          >
             {dock}
           </div>
           <div className="order-1 min-h-0 w-full md:order-2">
@@ -312,7 +313,10 @@ function GroupSessionView({
           </div>
         </div>
       ) : (
-        <div className="flex min-h-0 flex-1 flex-col items-center justify-end py-3 md:justify-center md:py-4">
+        <div
+          className="flex min-h-0 flex-1 flex-col items-center justify-end md:justify-center md:py-4"
+          style={{ paddingBottom: PWA_FOOTER_PAD }}
+        >
           {dock}
         </div>
       )}
@@ -329,14 +333,11 @@ function LiveSessionView({
   const cluster = <RoomDock room={room} compact={hasResults} />;
 
   return (
-    <main
-      className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-[#0a0414] px-3 md:px-8"
-      style={{
-        paddingTop: "max(0.5rem, env(safe-area-inset-top))",
-        paddingBottom: "max(0.4rem, env(safe-area-inset-bottom))",
-      }}
-    >
-      <div className="flex shrink-0 items-center justify-between gap-3">
+    <main className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-[#0a0414] px-3 md:px-8">
+      <div
+        className="flex shrink-0 items-center justify-between gap-3 bg-[#0a0414]"
+        style={{ paddingTop: PWA_HEADER_PAD }}
+      >
         <div className="flex min-w-0 flex-1 items-center gap-3">
           <BrandLogo />
           <p className="hidden text-[11px] font-medium tracking-[0.16em] text-violet-300 uppercase sm:block">
@@ -360,7 +361,10 @@ function LiveSessionView({
 
       {hasResults && room.result ? (
         <div className="grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)_auto] gap-2 py-2 md:grid-cols-[17rem_minmax(0,1fr)] md:grid-rows-1 md:gap-8 md:py-4">
-          <div className="order-2 flex flex-col items-center justify-end md:order-1 md:justify-center">
+          <div
+            className="order-2 flex flex-col items-center justify-end md:order-1 md:justify-center"
+            style={{ paddingBottom: PWA_FOOTER_PAD }}
+          >
             {cluster}
           </div>
           <div className="order-1 min-h-0 w-full md:order-2">
@@ -368,7 +372,10 @@ function LiveSessionView({
           </div>
         </div>
       ) : (
-        <div className="flex min-h-0 flex-1 flex-col items-center justify-end py-3 md:justify-center md:py-4">
+        <div
+          className="flex min-h-0 flex-1 flex-col items-center justify-end md:justify-center md:py-4"
+          style={{ paddingBottom: PWA_FOOTER_PAD }}
+        >
           {cluster}
         </div>
       )}

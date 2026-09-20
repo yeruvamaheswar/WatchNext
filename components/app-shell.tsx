@@ -7,6 +7,7 @@ import { BrandLogo } from "@/components/brand-logo";
 import { HamburgerMenu } from "@/components/hamburger-menu";
 import { useRoomUi } from "@/hooks/use-room-ui";
 import { APP_TABS } from "@/lib/nav";
+import { PWA_HEADER_PAD } from "@/lib/pwa";
 import { cn } from "@/lib/utils";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -14,11 +15,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   return (
-    <div className="flex h-dvh flex-col overflow-hidden bg-background">
+    <div className="fixed inset-0 flex flex-col overflow-hidden bg-background">
       {!active ? (
         <header
           className="relative z-20 shrink-0 bg-background px-2 pb-1"
-          style={{ paddingTop: "max(0.5rem, env(safe-area-inset-top))" }}
+          style={{ paddingTop: PWA_HEADER_PAD }}
         >
           <div className="relative flex items-center gap-2">
             <HamburgerMenu />
@@ -50,7 +51,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           "min-h-0 flex-1",
           active
             ? "flex flex-col"
-            : "overflow-x-hidden overflow-y-auto pb-[calc(3.25rem+env(safe-area-inset-bottom,0px))] scrollbar-none md:pb-0"
+            : "overflow-x-hidden overflow-y-auto pb-[calc(3.25rem+var(--wn-safe-bottom,0px))] scrollbar-none md:pb-0"
         )}
       >
         {children}

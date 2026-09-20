@@ -8,6 +8,7 @@ import { Menu, SlidersHorizontal, UserRound, Settings, X } from "lucide-react";
 import { BrandLogo } from "@/components/brand-logo";
 import { Button } from "@/components/ui/button";
 import { useWatchNext } from "@/hooks/use-watchnext";
+import { PWA_HEADER_PAD } from "@/lib/pwa";
 
 const links = [
   { href: "/preferences", icon: SlidersHorizontal, label: "Preferences" },
@@ -52,7 +53,7 @@ export function HamburgerMenu() {
             />
             <aside
               className="absolute inset-y-0 left-0 z-[1] flex w-[min(20rem,86vw)] flex-col border-r border-white/10 bg-[#12081c] shadow-2xl"
-              style={{ paddingTop: "max(1rem, env(safe-area-inset-top))" }}
+              style={{ paddingTop: PWA_HEADER_PAD }}
             >
               <div className="flex items-start justify-between gap-3 px-5 pb-4">
                 <div className="min-w-0 space-y-1">

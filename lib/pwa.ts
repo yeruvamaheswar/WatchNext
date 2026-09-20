@@ -5,6 +5,10 @@ export const APP_DESCRIPTION =
 export const APP_THEME_COLOR = "#6d28d9";
 export const APP_BACKGROUND_COLOR = "#0c0614";
 
+/** Measured by SafeAreaSync; falls back to env() before JS runs. */
+export const PWA_HEADER_PAD = "max(0.5rem, var(--wn-safe-top, 0px))";
+export const PWA_FOOTER_PAD = "max(0.5rem, var(--wn-safe-bottom, 0px))";
+
 /** Apple splash pixel sizes + CSS media queries for Add to Home Screen. */
 export const APPLE_SPLASH = [
   { width: 640, height: 1136, deviceWidth: 320, deviceHeight: 568, ratio: 2 },

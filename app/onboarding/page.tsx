@@ -121,7 +121,7 @@ export default function OnboardingPage() {
   return (
     <div
       className="mx-auto flex min-h-dvh max-w-lg flex-col px-4 pb-8"
-      style={{ paddingTop: "max(1.5rem, env(safe-area-inset-top))" }}
+      style={{ paddingTop: "max(1.5rem, var(--wn-safe-top, 0px))" }}
     >
       <header className="mb-5">
         <BrandLogo />
