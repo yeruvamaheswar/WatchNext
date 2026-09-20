@@ -1,79 +1,97 @@
 # WatchNext
 
-Local-only Next.js PWA: swipe three onboarding questions, then pick something to watch on **Home** or talk it out in a ChatGPT-style **Room**. Catalog lives in local Supabase Postgres + pgvector (TMDB slice). No Vercel deploy.
+Next.js PWA that learns a quick taste profile, then picks something to watch. Use **Home** for a one-tap recommendation, or **Room** to talk it out — solo live voice, typed search, or a group of people around one phone.
+
+The catalog is TMDB titles plus OpenAI embeddings in Supabase Postgres (pgvector). Guests get an anonymous Auth session when that provider is enabled; lists also survive locally if Auth is down.
+
+The app is meant to run on your machine or a VM. TLS stays on the host (named tunnel or reverse proxy). This repo does not deploy to Vercel.
+
+## Surfaces
+
+| Route | What it does |
+| --- | --- |
+| `/` | Splash, then `/onboarding` or `/home` |
+| `/onboarding` | Three swipe decks: movies, TV, vibes |
+| `/home` | “What should I watch?” orb + poster tiles |
+| `/room` | Live Realtime session, text search, or Group mode |
+| `/preferences` | Liked / dismissed titles, vibes, watchlist, seen, redo onboarding |
+| `/user` | Display name |
+| `/account` | Email/password sign-in, sign-up, guest, sign-out |
+
+The header logo opens Preferences, User, and Account. Bottom tabs are Home and Room. Add to Home Screen for standalone chrome (purple theme, Apple splash + icons).
 
 ## What works without API keys
 
-The app **boots** with empty keys. You can:
-
-- Complete 3-question swipe onboarding (static popular titles + vibe cards)
-- Use Home / Room tabs, and tap the WatchNext logo for Preferences, User, and Account
-- Stay on a guest session
-
-Clear errors appear when a key is missing:
+The app **boots** with empty keys. You can finish onboarding on fallback cards, move around the shell, and keep a local guest session. A health banner explains what is missing.
 
 | Feature | Needs |
 | --- | --- |
-| `npm run ingest` | `TMDB_API_KEY`, `OPENAI_API_KEY`, local Supabase |
-| Home “What should I watch?” | `OPENAI_API_KEY`, local Supabase with ingested embeddings |
-| Room STT / extract / TTS | `OPENAI_API_KEY` |
-| Room / Home suggest | `OPENAI_API_KEY` + ingested catalog |
+| `npm run ingest` | `TMDB_API_KEY`, `OPENAI_API_KEY`, Supabase service role |
+| Home / Room recommendations | `OPENAI_API_KEY`, ingested catalog |
+| Room live session | `OPENAI_API_KEY` (Realtime) |
+| Room Group mode | `OPENAI_API_KEY` (diarize + recommend) |
+| Posters / extra catalog metadata | `TMDB_API_KEY` |
+| Guest sync across devices | Hosted or local Supabase with **Anonymous** sign-ins enabled |
 
-Copy `.env.example` to `.env.local` and fill secrets there (never commit `.env.local`).
+Copy `.env.example` to `.env.local` and fill secrets there. Never commit `.env.local`.
 
-## Run locally
+Canonical env names win when a GitHub alias is also set: `OPENAI_API_KEY` / `OPENAI_CONVERSTION_WATCHNEXT`, `TMDB_API_KEY` / `TMDB_API`. Supabase accepts `NEXT_PUBLIC_SUPABASE_ANON_KEY` or `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, and `SUPABASE_SERVICE_ROLE_KEY` or `SUPABASE_SECRET_KEY`.
 
-### 1. App
+## Run the app
 
 ```bash
-cp .env.example .env.local   # OPENAI_API_KEY / TMDB_API_KEY, or GitHub aliases OPENAI_CONVERSTION_WATCHNEXT / TMDB_API
+cp .env.example .env.local
 npm install
 npm run dev                  # http://127.0.0.1:3000  (binds 0.0.0.0 for LAN)
 ```
 
-On a phone or another PC, open `http://<your-machine-ip>:3000` (Next prints a Network URL). LAN IPv4 hosts are allowed automatically. For a tunnel hostname, set `ALLOWED_DEV_ORIGIN`.
+On a phone or another PC, open `http://<your-machine-ip>:3000`. LAN IPv4 hosts are allowed automatically. For a tunnel hostname in `next dev`, set `ALLOWED_DEV_ORIGIN`.
 
-Safari may require HTTPS for the mic; put a reverse proxy or named tunnel in front of the app if `getUserMedia` is blocked on HTTP.
-
-Add to Home Screen for standalone PWA chrome (`display: standalone`, purple theme, Apple splash + icons).
+Safari often blocks the mic on plain HTTP. Put a reverse proxy or named tunnel in front so the phone sees trusted HTTPS.
 
 ### Docker
 
-The image serves HTTP. Compose publishes `WATCHNEXT_PORT` (default `43300`) so it does not take port `3000`. Secrets stay in `.env.local`. TLS and hostnames stay on the host (tunnel or reverse proxy), not in this repo.
+The image is HTTP only (`next start` standalone). Compose maps `WATCHNEXT_PORT` (default `43300`) so it does not steal host port `3000`. Bind defaults to loopback so a host tunnel/proxy is the public door.
 
 ```bash
 docker compose --env-file .env.local up -d --build
 ```
 
-Set `WATCHNEXT_BIND=127.0.0.1` when only the host tunnel/proxy should reach the container. Leave `NEXT_PUBLIC_APP_URL` unset to use the request host, or set it to the public HTTPS origin.
+Useful env (all optional, all stay in `.env.local`):
 
-### 2. Local Supabase (Docker)
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `WATCHNEXT_PORT` | `43300` | Host port |
+| `WATCHNEXT_BIND` | `127.0.0.1` | Use `0.0.0.0` only if you want LAN HTTP without a proxy |
+| `WATCHNEXT_ENV_FILE` | `.env.local` | Compose env file |
+| `NEXT_PUBLIC_APP_URL` | request host | Public HTTPS origin for icons / Open Graph |
 
-Docker must be running. Nested Docker / overlayfs environments can fail image extract (`whiteout file ... operation not permitted`); run `npx supabase start` on a normal Docker Desktop/Linux host instead.
+Rebuild after changing `NEXT_PUBLIC_*` values; they are baked in at image build time.
+
+## Supabase
+
+Use **either** local Docker **or** a hosted project. Do not leave both URL/key pairs uncommented in `.env.local`.
+
+### Local
 
 ```bash
 npx supabase start
 ```
 
-Copy the printed `API URL`, `anon key`, and `service_role` key into `.env.local` if they differ from the demo values in `.env.example`.
-
-Migrations apply on first start. To re-apply:
+Copy the printed API URL, anon key, and service_role key into `.env.local` if they differ from `.env.example`. Studio is http://127.0.0.1:54323.
 
 ```bash
-npx supabase db reset
-# or
-npx supabase migration up
-```
-
-Studio: http://127.0.0.1:54323
-
-Stop:
-
-```bash
+npx supabase db reset          # recreate from supabase/migrations
 npx supabase stop
 ```
 
-### 3. Ingest TMDB + embeddings
+`supabase/config.toml` already has `enable_anonymous_sign_ins = true` for local Auth.
+
+### Hosted
+
+Point `NEXT_PUBLIC_SUPABASE_URL` and a publishable/anon key at the project, plus a service role / secret key for ingest. Then enable **Anonymous** under Authentication → Providers. If that toggle is off, opening the app POSTs `/auth/v1/signup` and the browser logs `422 Unprocessable Content` (`anonymous_provider_disabled`). Apply the same migrations as local.
+
+## Ingest TMDB + embeddings
 
 ```bash
 npm run ingest
@@ -81,40 +99,30 @@ npm run ingest
 # optional: npm run ingest -- --pages 5 --quick
 ```
 
-`--limit N` upserts and embeds exactly N titles (mixed movies + TV). `--quick` skips per-title keywords/cast calls. Default is 10 TMDB pages each of movies and TV (~400 titles). Embedding text is title + overview + tags (keywords and genres).
+`--limit N` upserts and embeds N titles (mixed movies + TV). `--quick` skips per-title keywords/cast. Default is 10 TMDB pages each of movies and TV (~400 titles). Embedding text is title + overview + tags.
 
-## Voice pipeline (Room)
+## Room voice
 
-### Live session (Realtime)
+**Live (default).** One-on-one OpenAI Realtime over WebRTC. Captions stream while you talk; the host can suggest mid-conversation. You can also type a search without starting the mic.
 
-One-on-one live session via OpenAI Realtime (WebRTC): captions stream while you talk; the host can call suggest mid-conversation.
+**Group mode.** Toggle next to the search field. One phone records everyone nearby (noise-hardened mic + energy VAD). After ~6s of silence or a tap on Suggest, audio is diarized (`gpt-4o-transcribe-diarize`) and the catalog is searched for a group compromise.
 
-### Group mode
+Batch helpers (`/api/transcribe`, `/api/extract`, `/api/tts`) still exist. Live Room uses Realtime; Group uses `/api/transcribe/diarize` + `/api/group/recommend`.
 
-Toggle **Group mode** under the Start button. One phone records everyone nearby (noise-hardened mic + energy VAD). After **~6s of silence** or a tap on **Suggest**, audio is diarized (`gpt-4o-transcribe-diarize`) into Person 1 / 2 / 3…, then the catalog is searched for a group compromise. Live Realtime is unchanged when Group mode is off.
+## Icons
 
-Legacy batch helpers still exist (`/api/transcribe`, `/api/extract`, `/api/tts`) but Live Room uses Realtime; Group uses `/api/transcribe/diarize` + `/api/group/recommend`.
+`npm run icons` regenerates favicon, PWA, Apple touch, splash, and social images. Apple home-screen marks are drawn larger than the generic PWA icons so they fill the rounded square. iOS rejects apple-touch-icons with an alpha channel; those files stay RGB.
 
-## Voice pipeline (Room) — historical batch notes
-
-Explicit, not Realtime API (batch helpers):
-
-1. **VAD** — energy-based speech vs silence on this device’s mic  
-2. **STT** — `/api/transcribe` (Whisper / `gpt-4o-transcribe`)  
-3. **Extract** — `/api/extract` titles, people, moods, constraints, watch-intent  
-4. **Embed + search** — blend query with onboarding taste, `match_titles` RPC  
-5. **Suggest** — LLM picks 1–3 titles  
-6. **TTS + tiles** — `/api/tts` while poster cards slide up  
-
-Suggestions run on pause **and** watch-intent (or the **Suggest** button). Bottom tabs hide during an active session.
+After changing icons, rebuild the Docker image (or restart `next dev`) and, on a phone, remove and re-add the Home Screen shortcut so iOS drops the cached icon.
 
 ## Scripts
 
 | Script | What |
 | --- | --- |
 | `npm run dev` | Next.js on `0.0.0.0:3000` |
+| `npm run dev:https` | Experimental Next HTTPS (dev only; flaky — prefer a host tunnel) |
 | `npm run build` / `npm start` | Production local server |
-| `docker compose --env-file .env.local up -d --build` | Production container on `WATCHNEXT_PORT` (default 43300) |
+| `docker compose --env-file .env.local up -d --build` | Production container on `WATCHNEXT_PORT` |
 | `npm run icons` | Generate favicon, PWA, Apple, and OG images |
 | `npm run ingest` | TMDB upsert + OpenAI embeddings |
 | `npx supabase start` | Local Postgres, Auth, Studio |
@@ -122,4 +130,4 @@ Suggestions run on pause **and** watch-intent (or the **Suggest** button). Botto
 
 ## Stack
 
-Next.js App Router, Tailwind, shadcn/ui (dark purple), local Supabase (Auth, pgvector, RLS), TMDB, OpenAI.
+Next.js App Router (standalone output), Tailwind, shadcn/ui (dark purple), Supabase (Auth, pgvector, RLS), TMDB, OpenAI (chat, embeddings, Realtime, transcribe, TTS).
