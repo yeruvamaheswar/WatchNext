@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Providers } from "@/components/providers";
+import { appOrigin } from "@/lib/app-origin";
 import {
   APP_BACKGROUND_COLOR,
   APP_DESCRIPTION,
@@ -92,7 +93,12 @@ const siteMetadata: Metadata = {
   manifest: "/manifest.webmanifest",
 };
 
-export const metadata: Metadata = siteMetadata;
+export async function generateMetadata(): Promise<Metadata> {
+  return {
+    metadataBase: await appOrigin(),
+    ...siteMetadata,
+  };
+}
 
 export const viewport: Viewport = {
   // Match the app field so iOS standalone does not wash a purple band over the header.

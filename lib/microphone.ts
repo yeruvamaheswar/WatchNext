@@ -20,7 +20,7 @@ export function getUserMediaFn(): MediaDevices["getUserMedia"] | null {
               err: (e: Error) => void
             ) => void;
           }
-        ).webkitGetUserMedia(constraints, resolve, reject);
+        ).webkitGetUserMedia(constraints ?? { audio: true }, resolve, reject);
       });
   }
   return null;

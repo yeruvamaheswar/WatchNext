@@ -21,6 +21,7 @@ function localLanHostnames() {
 }
 
 const nextConfig: NextConfig = {
+  output: "standalone",
   // 127.0.0.1 vs localhost is treated as cross-origin in Next 16.
   // `*.*.*.*` matches any IPv4 the browser uses (phones/PCs on the LAN).
   // Interface addresses cover IPv6 and stay current across DHCP.
