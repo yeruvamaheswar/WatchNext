@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { HealthBanner } from "@/components/health-banner";
 import { MobileOrbDock } from "@/components/mobile-orb-dock";
@@ -9,6 +9,8 @@ import { WatchOrb } from "@/components/watch-orb";
 import { useWatchNext } from "@/hooks/use-watchnext";
 import type { RecommendResult } from "@/lib/types";
 
+const SESSION_EXCLUDE_CAP = 80;
+
 export default function HomePage() {
   const { userId, guest } = useWatchNext();
   const [loading, setLoading] = useState(false);
@@ -16,19 +18,25 @@ export default function HomePage() {
   const [error, setError] = useState<{ message: string; hint?: string } | null>(
     null
   );
+  const sessionExcludeIds = useRef<number[]>([]);
+  const guestRef = useRef(guest);
+  guestRef.current = guest;
 
   async function recommend() {
     setLoading(true);
     setError(null);
+    const current = guestRef.current;
     try {
       const res = await fetch("/api/recommend", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           userId,
-          likes: guest.likes,
-          likedVibes: guest.likedVibes,
-          excludeTmdbIds: guest.seen.map((mark) => mark.tmdbId),
+          likes: current.likes,
+          likedVibes: current.likedVibes,
+          dislikedVibes: current.dislikedVibes,
+          excludeTmdbIds: current.seen.map((mark) => mark.tmdbId),
+          sessionExcludeIds: sessionExcludeIds.current,
           queryText: "just pick something great to watch tonight",
         }),
       });
@@ -40,7 +48,14 @@ export default function HomePage() {
         });
         return;
       }
-      setResult(data as RecommendResult);
+      const next = data as RecommendResult;
+      sessionExcludeIds.current = [
+        ...new Set([
+          ...sessionExcludeIds.current,
+          ...next.titles.map((title) => title.tmdbId),
+        ]),
+      ].slice(-SESSION_EXCLUDE_CAP);
+      setResult(next);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Could not recommend.";
       setError({ message });

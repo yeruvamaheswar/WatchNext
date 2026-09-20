@@ -12,6 +12,7 @@ type GroupRecommendBody = {
   labeledTranscript?: string;
   likes?: GuestLike[];
   likedVibes?: string[];
+  dislikedVibes?: string[];
   userId?: string | null;
   excludeTmdbIds?: number[];
   sessionExcludeIds?: number[];
@@ -65,6 +66,7 @@ export async function POST(request: Request) {
         speakerNotes: group.speakerNotes,
         likes: body.likes,
         likedVibes: body.likedVibes,
+        dislikedVibes: body.dislikedVibes,
         userId: body.userId,
         excludeTmdbIds: body.excludeTmdbIds,
         sessionExcludeIds: body.sessionExcludeIds,

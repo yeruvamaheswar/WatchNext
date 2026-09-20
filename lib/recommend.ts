@@ -1,5 +1,5 @@
 import { ConfigError } from "@/lib/config-error";
-import { blendVectors, embedText, meanVectors } from "@/lib/embeddings";
+import { blendVectors, embedText, meanVectors, repelVector } from "@/lib/embeddings";
 import { getServerEnv } from "@/lib/env";
 import { getOpenAI, openaiModels } from "@/lib/openai";
 import { createAdminSupabase, tryCreateAdminSupabase } from "@/lib/supabase/admin";
@@ -69,6 +69,12 @@ function buildQueryText(input: RecommendInput) {
     : "just pick something great to watch tonight";
 }
 
+function tmdbIdList(values: unknown[] | undefined) {
+  return (values ?? [])
+    .map((value) => (typeof value === "number" ? value : Number(value)))
+    .filter((id) => Number.isFinite(id) && id > 0);
+}
+
 async function loadSeenIds(userId: string | null | undefined) {
   if (!userId) return [];
   const supabase = tryCreateAdminSupabase();
@@ -77,9 +83,19 @@ async function loadSeenIds(userId: string | null | undefined) {
     .from("user_seen")
     .select("tmdb_id")
     .eq("user_id", userId);
-  return (data ?? [])
-    .map((row) => row.tmdb_id)
-    .filter((id): id is number => typeof id === "number");
+  return tmdbIdList((data ?? []).map((row) => row.tmdb_id));
+}
+
+async function loadLikedIds(userId: string | null | undefined) {
+  if (!userId) return [];
+  const supabase = tryCreateAdminSupabase();
+  if (!supabase) return [];
+  const { data } = await supabase
+    .from("user_likes")
+    .select("tmdb_id")
+    .eq("user_id", userId)
+    .eq("verdict", "like");
+  return tmdbIdList((data ?? []).map((row) => row.tmdb_id));
 }
 
 async function loadTasteVector(userId: string | null | undefined) {
@@ -96,17 +112,15 @@ async function loadTasteVector(userId: string | null | undefined) {
   return null;
 }
 
-async function tasteFromLikes(likes: GuestLike[] | undefined) {
-  const likedIds = (likes ?? [])
-    .filter((l) => l.verdict === "like")
-    .map((l) => l.tmdbId);
-  if (likedIds.length === 0) return null;
+async function embeddingsForTmdbIds(tmdbIds: number[]) {
+  const unique = [...new Set(tmdbIds)].slice(-30);
+  if (unique.length === 0) return null;
   const supabase = tryCreateAdminSupabase();
   if (!supabase) return null;
   const { data: titles } = await supabase
     .from("titles")
     .select("id")
-    .in("tmdb_id", likedIds);
+    .in("tmdb_id", unique);
   const ids = (titles ?? []).map((t) => t.id);
   if (ids.length === 0) return null;
   const { data: embeddings } = await supabase
@@ -119,10 +133,39 @@ async function tasteFromLikes(likes: GuestLike[] | undefined) {
   return meanVectors(vectors);
 }
 
-function dislikedIds(likes: GuestLike[] | undefined) {
+async function tasteFromLikes(likes: GuestLike[] | undefined) {
+  return embeddingsForTmdbIds(
+    (likes ?? []).filter((l) => l.verdict === "like").map((l) => l.tmdbId)
+  );
+}
+
+function dislikedLikes(likes: GuestLike[] | undefined) {
+  return (likes ?? []).filter((l) => l.verdict === "dislike");
+}
+
+function likedIds(likes: GuestLike[] | undefined) {
   return (likes ?? [])
-    .filter((l) => l.verdict === "dislike")
+    .filter((l) => l.verdict === "like")
     .map((l) => l.tmdbId);
+}
+
+function dislikedIds(likes: GuestLike[] | undefined) {
+  return dislikedLikes(likes).map((l) => l.tmdbId);
+}
+
+function avoidSimilarTo(likes: GuestLike[] | undefined) {
+  return dislikedLikes(likes)
+    .slice(-12)
+    .map((l) => ({
+      name: l.name || `#${l.tmdbId}`,
+      mediaType: l.mediaType,
+    }));
+}
+
+function avoidVibeNames(ids: string[] | undefined) {
+  return (ids ?? [])
+    .map((id) => VIBE_CARDS.find((v) => v.id === id)?.name)
+    .filter((name): name is string => Boolean(name));
 }
 
 function parseExcludeGenres(extract?: ExtractedIntent | null) {
@@ -144,7 +187,12 @@ async function llmPick(
   candidates: MatchRow[],
   queryText: string,
   extract?: ExtractedIntent | null,
-  opts?: { mode?: "solo" | "group"; speakerNotes?: Record<string, string> }
+  opts?: {
+    mode?: "solo" | "group";
+    speakerNotes?: Record<string, string>;
+    avoidSimilarTo?: { name: string; mediaType: "movie" | "tv" }[];
+    avoidVibes?: string[];
+  }
 ): Promise<RecommendResult> {
   const openai = getOpenAI();
   const { chat } = openaiModels();
@@ -163,9 +211,13 @@ async function llmPick(
   }));
 
   const isGroup = opts?.mode === "group";
+  const avoidHint =
+    " If avoidSimilarTo or avoidVibes are present, skip sequels, remakes, spin-offs, and close vibe matches when other candidates still fit.";
   const system = isGroup
-    ? "You pick 1-3 titles from a candidate list for a GROUP watching together. Reply JSON: { \"picks\": [{ \"id\": string, \"reason\": string }], \"spokenPitch\": string }. spokenPitch is one spoken sentence (under 30 words) that can briefly cite Person 1/2/3 preferences when helpful. Reasons explain why it works for the group. Never invent ids or catalog titles."
-    : "You pick 1-3 titles from a candidate list for a watch-now recommendation. Reply JSON: { \"picks\": [{ \"id\": string, \"reason\": string }], \"spokenPitch\": string }. spokenPitch is one spoken sentence (under 25 words) for TTS. Reasons are one line, why it matches the request. Never invent ids.";
+    ? "You pick 1-3 titles from a candidate list for a GROUP watching together. Reply JSON: { \"picks\": [{ \"id\": string, \"reason\": string }], \"spokenPitch\": string }. spokenPitch is one spoken sentence (under 30 words) that can briefly cite Person 1/2/3 preferences when helpful. Reasons explain why it works for the group. Never invent ids or catalog titles." +
+      avoidHint
+    : "You pick 1-3 titles from a candidate list for a watch-now recommendation. Reply JSON: { \"picks\": [{ \"id\": string, \"reason\": string }], \"spokenPitch\": string }. spokenPitch is one spoken sentence (under 25 words) for TTS. Reasons are one line, why it matches the request. Never invent ids." +
+      avoidHint;
 
   const completion = await openai.chat.completions.create({
     model: chat,
@@ -182,6 +234,8 @@ async function llmPick(
           request: queryText,
           extract: extract ?? null,
           speakerNotes: isGroup ? opts?.speakerNotes ?? {} : undefined,
+          avoidSimilarTo: opts?.avoidSimilarTo?.length ? opts.avoidSimilarTo : undefined,
+          avoidVibes: opts?.avoidVibes?.length ? opts.avoidVibes : undefined,
           candidates: catalog,
         }),
       },
@@ -291,8 +345,8 @@ function toSuggested(row: MatchRow, reason: string): SuggestedTitle {
 }
 
 /**
- * Shared solo + room recommender: blend query + taste, exclude dislikes,
- * pgvector RPC, then an LLM picks 1–3 titles with a spoken reason.
+ * Shared solo + room recommender: blend query + likes, repel dislikes,
+ * exclude dismissed/seen IDs, pgvector RPC, then an LLM picks 1–3 titles.
  */
 export async function recommend(input: RecommendInput): Promise<RecommendResult> {
   const supabase = createAdminSupabase();
@@ -332,18 +386,27 @@ export async function recommend(input: RecommendInput): Promise<RecommendResult>
   const queryEmbedding = await embedText(queryText);
   const storedTaste = await loadTasteVector(input.userId);
   const likeTaste = storedTaste ?? (await tasteFromLikes(input.likes));
+  const dislikeTaste = await embeddingsForTmdbIds(dislikedIds(input.likes));
   const seenIds = await loadSeenIds(input.userId);
+  const storedLikedIds = await loadLikedIds(input.userId);
   // Group: discussion-heavy (~85% conversation). Solo: 55% query / 45% taste.
   const blendWeight = input.mode === "group" ? 0.85 : 0.55;
-  const blended = blendVectors(queryEmbedding, likeTaste, blendWeight);
+  const blended = repelVector(
+    blendVectors(queryEmbedding, likeTaste, blendWeight),
+    dislikeTaste
+  );
 
   const exclude = [
-    ...new Set([
-      ...dislikedIds(input.likes),
-      ...seenIds,
-      ...(input.excludeTmdbIds ?? []),
-      ...(input.sessionExcludeIds ?? []),
-    ]),
+    ...new Set(
+      tmdbIdList([
+        ...likedIds(input.likes),
+        ...dislikedIds(input.likes),
+        ...storedLikedIds,
+        ...seenIds,
+        ...(input.excludeTmdbIds ?? []),
+        ...(input.sessionExcludeIds ?? []),
+      ])
+    ),
   ];
 
   const mediaType =
@@ -385,7 +448,10 @@ export async function recommend(input: RecommendInput): Promise<RecommendResult>
     );
   }
 
-  const rows = await attachPeople((data ?? []) as MatchRow[]);
+  const blocked = new Set(exclude);
+  const rows = (await attachPeople((data ?? []) as MatchRow[])).filter(
+    (row) => !blocked.has(Number(row.tmdb_id))
+  );
   if (rows.length === 0) {
     throw new ConfigError(
       "No titles matched after filters.",
@@ -398,5 +464,7 @@ export async function recommend(input: RecommendInput): Promise<RecommendResult>
   return llmPick(rows, queryText, input.extract, {
     mode: input.mode === "group" ? "group" : "solo",
     speakerNotes: input.speakerNotes,
+    avoidSimilarTo: avoidSimilarTo(input.likes),
+    avoidVibes: avoidVibeNames(input.dislikedVibes),
   });
 }

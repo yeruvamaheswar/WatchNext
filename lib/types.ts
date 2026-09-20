@@ -88,6 +88,7 @@ export type RecommendInput = {
   extract?: ExtractedIntent | null;
   likes?: GuestLike[];
   likedVibes?: string[];
+  dislikedVibes?: string[];
   userId?: string | null;
   excludeTmdbIds?: number[];
   sessionExcludeIds?: number[];

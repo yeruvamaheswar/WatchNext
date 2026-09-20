@@ -20,6 +20,7 @@ type Options = {
   userId: string;
   likes: GuestLike[];
   likedVibes: string[];
+  dislikedVibes?: string[];
   excludeTmdbIds?: number[];
   onActiveChange?: (active: boolean) => void;
 };
@@ -34,6 +35,7 @@ export function useGroupListen({
   userId,
   likes,
   likedVibes,
+  dislikedVibes,
   excludeTmdbIds,
   onActiveChange,
 }: Options) {
@@ -60,6 +62,7 @@ export function useGroupListen({
   const activeRef = useRef(false);
   const likesRef = useRef(likes);
   const vibesRef = useRef(likedVibes);
+  const dislikedVibesRef = useRef(dislikedVibes ?? []);
   const excludeRef = useRef(excludeTmdbIds ?? []);
   const userIdRef = useRef(userId);
   const suggestedIdsRef = useRef<number[]>([]);
@@ -71,9 +74,10 @@ export function useGroupListen({
   useEffect(() => {
     likesRef.current = likes;
     vibesRef.current = likedVibes;
+    dislikedVibesRef.current = dislikedVibes ?? [];
     excludeRef.current = excludeTmdbIds ?? [];
     userIdRef.current = userId;
-  }, [excludeTmdbIds, likes, likedVibes, userId]);
+  }, [dislikedVibes, excludeTmdbIds, likes, likedVibes, userId]);
 
   const teardownCapture = useCallback(() => {
     if (rafRef.current != null) {
@@ -167,6 +171,7 @@ export function useGroupListen({
             userId: userIdRef.current,
             likes: likesRef.current,
             likedVibes: vibesRef.current,
+            dislikedVibes: dislikedVibesRef.current,
             excludeTmdbIds: excludeRef.current,
             sessionExcludeIds: suggestedIdsRef.current,
           }),

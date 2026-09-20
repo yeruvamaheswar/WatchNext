@@ -362,7 +362,7 @@ export function WatchNextProvider({ children }: { children: React.ReactNode }) {
     const next = updateGuest((prev) => ({
       ...prev,
       onboardingComplete: false,
-      likes: [],
+      likes: prev.likes.filter((like) => like.verdict === "dislike"),
       likedVibes: [],
       dislikedVibes: [],
     }));

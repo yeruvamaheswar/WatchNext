@@ -28,6 +28,20 @@ export function blendVectors(
   );
 }
 
+/** Push `positive` away from a dislike centroid. Strength stays below 0.5 so the query still leads. */
+export function repelVector(
+  positive: number[],
+  negative: number[] | null,
+  strength = 0.35
+) {
+  if (!negative || negative.length !== positive.length || strength <= 0) {
+    return l2Normalize(positive);
+  }
+  return l2Normalize(
+    positive.map((n, i) => n - (negative[i] ?? 0) * strength)
+  );
+}
+
 function isOpenAI429(err: unknown) {
   if (!err || typeof err !== "object") return false;
   const e = err as { status?: number; code?: string; message?: string };
