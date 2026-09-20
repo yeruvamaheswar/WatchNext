@@ -64,6 +64,8 @@ function mix(a, b, t) {
 }
 
 /** Dark field + stacked poster cards + play skip. RGB PNG8 (no alpha) — iOS rejects apple-touch-icons with an alpha channel. */
+const APPLE_MARK_SCALE = 0.92;
+
 function png(width, height = width, { markScale = 0.62 } = {}) {
   const bpp = 3;
   const raw = Buffer.alloc((width * bpp + 1) * height);
@@ -210,24 +212,24 @@ writeFileSync(join(icons, "icon-512-maskable.png"), png(512, 512, { markScale: 0
 writeFileSync(join(icons, "icon-1024.png"), png(1024));
 writeFileSync(join(icons, "favicon-16x16.png"), png(16));
 writeFileSync(join(icons, "favicon-32x32.png"), png(32));
-writeFileSync(join(icons, "apple-touch-icon-120.png"), png(120));
-writeFileSync(join(icons, "apple-touch-icon-152.png"), png(152));
-writeFileSync(join(icons, "apple-touch-icon-167.png"), png(167));
-writeFileSync(join(icons, "apple-touch-icon-180.png"), png(180));
+writeFileSync(join(icons, "apple-touch-icon-120.png"), png(120, 120, { markScale: APPLE_MARK_SCALE }));
+writeFileSync(join(icons, "apple-touch-icon-152.png"), png(152, 152, { markScale: APPLE_MARK_SCALE }));
+writeFileSync(join(icons, "apple-touch-icon-167.png"), png(167, 167, { markScale: APPLE_MARK_SCALE }));
+writeFileSync(join(icons, "apple-touch-icon-180.png"), png(180, 180, { markScale: APPLE_MARK_SCALE }));
 
 const favicon = ico([
   { size: 16, data: png(16) },
   { size: 32, data: png(32) },
   { size: 48, data: png(48) },
 ]);
-writeFileSync(join(appDir, "favicon.ico"), favicon);
+// Next/Turbopack rejects RGB-only ICO frames in app/favicon.ico. Leave the committed file.
 writeFileSync(join(root, "public", "favicon.ico"), favicon);
 writeFileSync(join(appDir, "icon.png"), png(32));
 writeFileSync(join(appDir, "icon.svg"), iconSvg);
 writeFileSync(join(root, "public", "opengraph-image.png"), png(1200, 630));
 writeFileSync(join(root, "public", "twitter-image.png"), png(1200, 630));
 
-const apple180 = png(180);
+const apple180 = png(180, 180, { markScale: APPLE_MARK_SCALE });
 writeFileSync(join(root, "public", "apple-touch-icon.png"), apple180);
 writeFileSync(join(root, "public", "apple-touch-icon-precomposed.png"), apple180);
 const appleNamed = [
@@ -237,7 +239,7 @@ const appleNamed = [
   [180, "apple-touch-icon-180x180.png"],
 ];
 for (const [size, name] of appleNamed) {
-  const data = size === 180 ? apple180 : png(size);
+  const data = size === 180 ? apple180 : png(size, size, { markScale: APPLE_MARK_SCALE });
   writeFileSync(join(root, "public", name), data);
   writeFileSync(join(root, "public", name.replace(".png", "-precomposed.png")), data);
 }
