@@ -34,22 +34,39 @@ export function PosterTiles({
 
   if (!titles.length) return null;
 
+  function dismiss(title: SuggestedTitle) {
+    setHidden((prev) => {
+      const next = new Set(prev);
+      next.add(title.id);
+      return next;
+    });
+  }
+
   return (
     <>
-      {layout === "rail" ? (
+      {!visible.length ? (
+        <p className="px-4 py-10 text-center text-sm text-violet-200/60">
+          Want another pick? Tap the orb.
+        </p>
+      ) : layout === "rail" ? (
         <div className="@container h-full min-h-0 w-full">
-          <div className="grid h-full min-h-0 w-full grid-cols-1 grid-rows-3 gap-1.5 overflow-hidden @4xl:grid-cols-3 @4xl:grid-rows-1 @4xl:place-items-center @4xl:gap-3">
+          <div
+            className="grid h-full min-h-0 w-full grid-cols-1 gap-1.5 overflow-hidden @4xl:grid-cols-3 @4xl:grid-rows-1 @4xl:place-items-center @4xl:gap-3"
+            style={{ gridTemplateRows: `repeat(${visible.length}, minmax(0, 1fr))` }}
+          >
             {visible.map((title) => (
               <PosterTile
                 key={`${title.mediaType}-${title.tmdbId}`}
                 title={title}
                 layout="rail"
+                swipeable={swipeable}
                 onOpen={setOpen}
+                onDismiss={() => dismiss(title)}
               />
             ))}
           </div>
         </div>
-      ) : visible.length ? (
+      ) : (
         <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3 sm:gap-3">
           {visible.map((title) => (
             <PosterTile
@@ -58,20 +75,10 @@ export function PosterTiles({
               layout="cards"
               swipeable={swipeable}
               onOpen={setOpen}
-              onDismiss={() =>
-                setHidden((prev) => {
-                  const next = new Set(prev);
-                  next.add(title.id);
-                  return next;
-                })
-              }
+              onDismiss={() => dismiss(title)}
             />
           ))}
         </div>
-      ) : (
-        <p className="px-4 py-10 text-center text-sm text-violet-200/60">
-          Want another pick? Tap the orb.
-        </p>
       )}
       <TitleDetail title={open} onClose={() => setOpen(null)} />
     </>
@@ -94,7 +101,7 @@ function PosterTile({
   const src = posterUrl(title.posterPath, "w342");
   const { recordVerdict } = useWatchNext();
   const swipe = useCardSwipe({
-    enabled: swipeable && layout === "cards",
+    enabled: swipeable,
     onLike: () => {
       recordVerdict({
         tmdbId: title.tmdbId,
