@@ -36,7 +36,14 @@ function titleKey(item: { tmdbId: number; mediaType: string }) {
 export function mergeLikes(remote: GuestLike[], local: GuestLike[]) {
   const map = new Map<string, GuestLike>();
   for (const like of remote) map.set(titleKey(like), like);
-  for (const like of local) map.set(titleKey(like), like);
+  for (const like of local) {
+    const current = map.get(titleKey(like));
+    map.set(titleKey(like), {
+      ...current,
+      ...like,
+      name: like.name || current?.name,
+    });
+  }
   return [...map.values()];
 }
 

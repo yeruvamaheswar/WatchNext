@@ -22,12 +22,17 @@ export default function PreferencesPage() {
   const { resetOnboarding, removeLikedTitle, toggleWatchlist, toggleSeen, guest } =
     useWatchNext();
   const [likesOpen, setLikesOpen] = useState(false);
+  const [dismissedOpen, setDismissedOpen] = useState(false);
+  const [vibesOpen, setVibesOpen] = useState(false);
   const [watchlistOpen, setWatchlistOpen] = useState(false);
   const [seenOpen, setSeenOpen] = useState(false);
   const [redoOpen, setRedoOpen] = useState(false);
   const likedTitles = guest.likes.filter((like) => like.verdict === "like");
-  const vibeNames = guest.likedVibes.map(
-    (id) => VIBE_CARDS.find((vibe) => vibe.id === id)?.name ?? id
+  const dismissedTitles = guest.likes.filter((like) => like.verdict === "dislike");
+  const vibeNames = sortNames(
+    guest.likedVibes.map(
+      (id) => VIBE_CARDS.find((vibe) => vibe.id === id)?.name ?? id
+    )
   );
 
   function confirmRedo() {
@@ -51,12 +56,20 @@ export default function PreferencesPage() {
         names={likedTitles.map((like) => like.name || `#${like.tmdbId}`)}
         onClick={() => setLikesOpen(true)}
       />
-      <section className="rounded-2xl border border-white/10 p-4">
-        <h2 className="font-medium">Liked vibes</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {vibeNames.length ? vibeNames.join(", ") : "None yet."}
-        </p>
-      </section>
+      <ListButton
+        testId="open-dismissed-titles"
+        title="Dismissed"
+        empty="None yet. Swipe left on a search result to dismiss it."
+        names={dismissedTitles.map((like) => like.name || `#${like.tmdbId}`)}
+        onClick={() => setDismissedOpen(true)}
+      />
+      <ListButton
+        testId="open-liked-vibes"
+        title="Liked vibes"
+        empty="None yet."
+        names={vibeNames}
+        onClick={() => setVibesOpen(true)}
+      />
       <ListButton
         testId="open-watchlist"
         title="Watchlist"
@@ -84,7 +97,7 @@ export default function PreferencesPage() {
         open={likesOpen}
         onOpenChange={setLikesOpen}
         title="Liked titles"
-        description="Remove anything you no longer want used for recommendations."
+        description="These steer later picks. Search will skip the titles themselves."
         empty="No liked titles yet. Open a search result and add it here."
         items={likedTitles.map((like) => ({
           tmdbId: like.tmdbId,
@@ -96,6 +109,31 @@ export default function PreferencesPage() {
           removeLikedTitle(mark);
           toast.success("Removed from liked titles.");
         }}
+      />
+      <TitleListDialog
+        open={dismissedOpen}
+        onOpenChange={setDismissedOpen}
+        title="Dismissed"
+        description="Titles you swiped away. Search skips these and steers away from similar picks."
+        empty="No dismissed titles yet. Swipe left on a search result."
+        items={dismissedTitles.map((like) => ({
+          tmdbId: like.tmdbId,
+          mediaType: like.mediaType,
+          name: like.name,
+          meta: like.source === "favorite" ? "Dismissed from search" : "Onboarding",
+        }))}
+        onRemove={(mark) => {
+          removeLikedTitle(mark);
+          toast.success("Removed from dismissed. It can show up in search again.");
+        }}
+      />
+      <NameListDialog
+        open={vibesOpen}
+        onOpenChange={setVibesOpen}
+        title="Liked vibes"
+        description="Vibes from onboarding. These steer search mood."
+        empty="No liked vibes yet."
+        names={vibeNames}
       />
       <TitleListDialog
         open={watchlistOpen}
@@ -133,9 +171,9 @@ export default function PreferencesPage() {
           <DialogHeader>
             <DialogTitle>Redo onboarding?</DialogTitle>
             <DialogDescription>
-              This clears every liked title and vibe, including titles you added
-              from search. Watchlist and seen-it stay. You will swipe a new
-              taste profile from scratch.
+              This clears liked titles and vibes, including titles you added
+              from search. Dismissed titles, watchlist, and seen-it stay. You
+              will swipe a new taste profile from scratch.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -178,10 +216,10 @@ function ListButton({
       onClick={onClick}
     >
       <h2 className="font-medium">{title}</h2>
-      <p className="mt-1 text-sm text-muted-foreground">
+      <p className="mt-1 line-clamp-1 text-sm leading-5 text-muted-foreground">
         {names.length ? names.join(", ") : empty}
       </p>
-      <p className="mt-2 text-xs text-violet-300">Tap to edit</p>
+      <p className="mt-2 text-xs text-violet-300">Tap to view</p>
     </button>
   );
 }
@@ -203,6 +241,7 @@ function TitleListDialog({
   items: Array<TitleMark & { meta?: string }>;
   onRemove: (mark: TitleMark) => void;
 }) {
+  const sorted = sortByName(items);
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[min(80dvh,36rem)] overflow-hidden border-white/10 bg-[#160a24]">
@@ -210,9 +249,9 @@ function TitleListDialog({
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
-        {items.length ? (
+        {sorted.length ? (
           <ul className="max-h-[50dvh] space-y-2 overflow-y-auto pr-1">
-            {items.map((item) => (
+            {sorted.map((item) => (
               <li
                 key={`${item.mediaType}-${item.tmdbId}`}
                 className="flex items-center justify-between gap-3 rounded-xl border border-white/10 px-3 py-2"
@@ -241,5 +280,63 @@ function TitleListDialog({
         )}
       </DialogContent>
     </Dialog>
+  );
+}
+
+function NameListDialog({
+  open,
+  onOpenChange,
+  title,
+  description,
+  empty,
+  names,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  title: string;
+  description: string;
+  empty: string;
+  names: string[];
+}) {
+  const sorted = sortNames(names);
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[min(80dvh,36rem)] overflow-hidden border-white/10 bg-[#160a24]">
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+          <DialogDescription>{description}</DialogDescription>
+        </DialogHeader>
+        {sorted.length ? (
+          <ul className="max-h-[50dvh] space-y-2 overflow-y-auto pr-1">
+            {sorted.map((name) => (
+              <li
+                key={name}
+                className="rounded-xl border border-white/10 px-3 py-2 font-medium"
+              >
+                {name}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-sm text-muted-foreground">{empty}</p>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function titleLabel(item: { name?: string; tmdbId?: number }) {
+  return item.name?.trim() || (item.tmdbId != null ? `#${item.tmdbId}` : "");
+}
+
+function sortNames(names: string[]) {
+  return [...names].sort((a, b) =>
+    a.localeCompare(b, undefined, { sensitivity: "base" })
+  );
+}
+
+function sortByName<T extends { name?: string; tmdbId?: number }>(items: T[]) {
+  return [...items].sort((a, b) =>
+    titleLabel(a).localeCompare(titleLabel(b), undefined, { sensitivity: "base" })
   );
 }

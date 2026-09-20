@@ -43,7 +43,7 @@ export async function loadPersistedUserState(userId: string): Promise<RemoteUser
   if (watchlistRes.error) throw watchlistRes.error;
   if (seenRes.error) throw seenRes.error;
 
-  const likes = ((likesRes.data ?? []) as LikeRow[])
+  const likesRaw = ((likesRes.data ?? []) as LikeRow[])
     .map((row) => {
       const mediaType = asMediaType(row.media_type);
       const verdict = asVerdict(row.verdict);
@@ -56,6 +56,19 @@ export async function loadPersistedUserState(userId: string): Promise<RemoteUser
       } satisfies GuestLike;
     })
     .filter((row): row is GuestLike => Boolean(row));
+  const likeNames = await withTitleNames(
+    likesRaw.map((like) => ({
+      tmdbId: like.tmdbId,
+      mediaType: like.mediaType,
+    }))
+  );
+  const likeNameByKey = new Map(
+    likeNames.map((mark) => [`${mark.mediaType}:${mark.tmdbId}`, mark.name])
+  );
+  const likes = likesRaw.map((like) => ({
+    ...like,
+    name: likeNameByKey.get(`${like.mediaType}:${like.tmdbId}`),
+  }));
 
   const watchlist = await withTitleNames(
     ((watchlistRes.data ?? []) as MarkRow[])

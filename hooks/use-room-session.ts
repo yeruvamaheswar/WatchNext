@@ -14,6 +14,7 @@ type Options = {
   userId: string;
   likes: GuestLike[];
   likedVibes: string[];
+  dislikedVibes?: string[];
   excludeTmdbIds?: number[];
   onActiveChange?: (active: boolean) => void;
 };
@@ -27,7 +28,7 @@ type RecommendToolArgs = {
   titles?: string[];
 };
 
-export function useRoomSession({ userId, likes, likedVibes, excludeTmdbIds, onActiveChange }: Options) {
+export function useRoomSession({ userId, likes, likedVibes, dislikedVibes, excludeTmdbIds, onActiveChange }: Options) {
   const [active, setActive] = useState(false);
   const [muted, setMuted] = useState(false);
   const [orb, setOrb] = useState<OrbState>("idle");
@@ -54,6 +55,7 @@ export function useRoomSession({ userId, likes, likedVibes, excludeTmdbIds, onAc
   const liveBufferRef = useRef("");
   const likesRef = useRef(likes);
   const vibesRef = useRef(likedVibes);
+  const dislikedVibesRef = useRef(dislikedVibes ?? []);
   const excludeRef = useRef(excludeTmdbIds ?? []);
   const userIdRef = useRef(userId);
   const startGenRef = useRef(0);
@@ -62,9 +64,10 @@ export function useRoomSession({ userId, likes, likedVibes, excludeTmdbIds, onAc
   useEffect(() => {
     likesRef.current = likes;
     vibesRef.current = likedVibes;
+    dislikedVibesRef.current = dislikedVibes ?? [];
     excludeRef.current = excludeTmdbIds ?? [];
     userIdRef.current = userId;
-  }, [excludeTmdbIds, likedVibes, likes, userId]);
+  }, [dislikedVibes, excludeTmdbIds, likedVibes, likes, userId]);
 
   const beginSession = useCallback(
     (withMic: boolean, nextOrb: OrbState = withMic ? "listening" : "idle") => {
@@ -155,6 +158,7 @@ export function useRoomSession({ userId, likes, likedVibes, excludeTmdbIds, onAc
           userId: userIdRef.current,
           likes: likesRef.current,
           likedVibes: vibesRef.current,
+          dislikedVibes: dislikedVibesRef.current,
           extract: intent,
           queryText,
           excludeTmdbIds: excludeRef.current,
@@ -349,6 +353,7 @@ export function useRoomSession({ userId, likes, likedVibes, excludeTmdbIds, onAc
             userId,
             likes,
             likedVibes,
+            dislikedVibes,
             extract: intent,
             queryText: text,
             excludeTmdbIds: excludeRef.current,
@@ -370,7 +375,7 @@ export function useRoomSession({ userId, likes, likedVibes, excludeTmdbIds, onAc
         setOrb(activeRef.current ? "listening" : "idle");
       }
     },
-    [likedVibes, likes, sendUserText, userId]
+    [dislikedVibes, likedVibes, likes, sendUserText, userId]
   );
 
   const suggest = useCallback(() => {
