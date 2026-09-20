@@ -86,7 +86,7 @@ export default function RoomPage() {
         <div className="flex min-h-0 flex-1 flex-col">
           {hasResults && room.result ? (
             <div className="min-h-0 flex-1 overflow-y-auto py-4 scrollbar-none">
-              <PosterTiles titles={room.result.titles} layout="rail" />
+              <PosterTiles titles={room.result.titles} layout="rail" swipeable />
             </div>
           ) : (
             <div className="flex min-h-0 flex-1 flex-col items-center justify-center">
@@ -295,7 +295,7 @@ function GroupSessionView({
             {dock}
           </div>
           <div className="order-1 min-h-0 w-full md:order-2">
-            <PosterTiles titles={group.result.titles} layout="rail" />
+            <PosterTiles titles={group.result.titles} layout="rail" swipeable />
           </div>
         </div>
       ) : (
@@ -354,7 +354,7 @@ function LiveSessionView({
             {cluster}
           </div>
           <div className="order-1 min-h-0 w-full md:order-2">
-            <PosterTiles titles={room.result.titles} layout="rail" />
+            <PosterTiles titles={room.result.titles} layout="rail" swipeable />
           </div>
         </div>
       ) : (
