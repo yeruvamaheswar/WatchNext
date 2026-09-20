@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Providers } from "@/components/providers";
 import {
+  APP_BACKGROUND_COLOR,
   APP_DESCRIPTION,
   APP_NAME,
   APP_THEME_COLOR,
@@ -20,7 +21,7 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
+const siteMetadata: Metadata = {
   title: {
     default: APP_NAME,
     template: `%s · ${APP_NAME}`,
@@ -67,13 +68,7 @@ export const metadata: Metadata = {
       { url: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
     ],
     shortcut: "/favicon.ico",
-    apple: [
-      { url: "/apple-touch-icon.png", sizes: "180x180" },
-      { url: "/icons/apple-touch-icon-120.png", sizes: "120x120" },
-      { url: "/icons/apple-touch-icon-152.png", sizes: "152x152" },
-      { url: "/icons/apple-touch-icon-167.png", sizes: "167x167" },
-      { url: "/icons/apple-touch-icon-180.png", sizes: "180x180" },
-    ],
+    apple: "/apple-touch-icon.png",
     other: [
       { rel: "apple-touch-icon-precomposed", url: "/apple-touch-icon-precomposed.png" },
       { rel: "mask-icon", url: "/safari-pinned-tab.svg", color: APP_THEME_COLOR },
@@ -95,10 +90,13 @@ export const metadata: Metadata = {
   manifest: "/manifest.webmanifest",
 };
 
+export const metadata: Metadata = siteMetadata;
+
 export const viewport: Viewport = {
+  // Match the app field so iOS standalone does not wash a purple band over the header.
   themeColor: [
-    { media: "(prefers-color-scheme: dark)", color: APP_THEME_COLOR },
-    { media: "(prefers-color-scheme: light)", color: APP_THEME_COLOR },
+    { media: "(prefers-color-scheme: dark)", color: APP_BACKGROUND_COLOR },
+    { media: "(prefers-color-scheme: light)", color: APP_BACKGROUND_COLOR },
   ],
   colorScheme: "dark",
   width: "device-width",

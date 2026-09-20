@@ -1,8 +1,23 @@
-const CACHE = "watchnext-v2";
+const CACHE = "watchnext-v5";
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE).then((cache) => cache.addAll(["/", "/home", "/room"]))
+    caches.open(CACHE).then((cache) =>
+      cache.addAll([
+        "/",
+        "/home",
+        "/room",
+        "/manifest.webmanifest",
+        "/apple-touch-icon.png",
+        "/apple-touch-icon-precomposed.png",
+        "/apple-touch-icon-180x180.png",
+        "/icons/icon-192.png",
+        "/icons/icon-512.png",
+        "/icons/icon-1024.png",
+        "/icons/icon-192-maskable.png",
+        "/icons/icon-512-maskable.png",
+      ])
+    )
   );
   self.skipWaiting();
 });

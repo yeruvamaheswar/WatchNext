@@ -42,6 +42,29 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  async headers() {
+    return [
+      {
+        source: "/apple-touch-icon.png",
+        headers: [{ key: "Cache-Control", value: "no-cache, must-revalidate" }],
+      },
+      {
+        source: "/apple-touch-icon-precomposed.png",
+        headers: [{ key: "Cache-Control", value: "no-cache, must-revalidate" }],
+      },
+      {
+        source: "/apple-touch-icon-:size.png",
+        headers: [{ key: "Cache-Control", value: "no-cache, must-revalidate" }],
+      },
+    ];
+  },
+  async rewrites() {
+    return [
+      { source: "/apple-icon", destination: "/apple-touch-icon.png" },
+      { source: "/apple-icon.png", destination: "/apple-touch-icon.png" },
+      { source: "/icon", destination: "/icon.png" },
+    ];
+  },
 };
 
 export default nextConfig;

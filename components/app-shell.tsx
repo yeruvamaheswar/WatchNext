@@ -17,7 +17,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <div className="flex h-dvh flex-col overflow-hidden bg-background">
       {!active ? (
         <header
-          className="relative z-20 shrink-0 px-2"
+          className="relative z-20 shrink-0 bg-background px-2 pb-1"
           style={{ paddingTop: "max(0.5rem, env(safe-area-inset-top))" }}
         >
           <div className="relative flex items-center gap-2">
@@ -50,7 +50,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           "min-h-0 flex-1",
           active
             ? "flex flex-col"
-            : "overflow-x-hidden overflow-y-auto pb-16 scrollbar-none md:pb-0"
+            : "overflow-x-hidden overflow-y-auto pb-[calc(3.25rem+env(safe-area-inset-bottom,0px))] scrollbar-none md:pb-0"
         )}
       >
         {children}
