@@ -23,6 +23,7 @@ export default function RoomPage() {
     userId,
     likes: guest.likes,
     likedVibes: guest.likedVibes,
+    excludeTmdbIds: guest.seen.map((mark) => mark.tmdbId),
     onActiveChange: setActive,
   });
 
@@ -30,6 +31,7 @@ export default function RoomPage() {
     userId,
     likes: guest.likes,
     likedVibes: guest.likedVibes,
+    excludeTmdbIds: guest.seen.map((mark) => mark.tmdbId),
     onActiveChange: setActive,
   });
 

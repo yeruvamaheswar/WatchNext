@@ -27,6 +27,7 @@ export default function HomePage() {
           userId,
           likes: guest.likes,
           likedVibes: guest.likedVibes,
+          excludeTmdbIds: guest.seen.map((mark) => mark.tmdbId),
           queryText: "just pick something great to watch tonight",
         }),
       });

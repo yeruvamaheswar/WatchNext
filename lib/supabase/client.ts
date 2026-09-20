@@ -1,4 +1,4 @@
-import { createBrowserClient } from "@supabase/ssr";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { getPublicEnv } from "@/lib/public-env";
 import { supabaseFetchTimeoutMs } from "@/lib/supabase/timeout";
 import { timedFetch } from "@/lib/timed-fetch";
@@ -25,12 +25,24 @@ function resolveBrowserSupabaseUrl(url: string) {
   return url;
 }
 
+let cached: SupabaseClient | null = null;
+let cachedKey = "";
+
 export function createBrowserSupabase() {
   const { supabaseUrl, supabaseAnon, hasSupabase } = getPublicEnv();
   if (!hasSupabase) return null;
   const browserUrl = resolveBrowserSupabaseUrl(supabaseUrl);
-  return createBrowserClient(browserUrl, supabaseAnon, {
+  const cacheKey = `${browserUrl}:${supabaseAnon}`;
+  if (cached && cachedKey === cacheKey) return cached;
+  cachedKey = cacheKey;
+  cached = createClient(browserUrl, supabaseAnon, {
     db: { retry: false },
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
+    },
     global: { fetch: timedFetch(supabaseFetchTimeoutMs(browserUrl)) },
   });
+  return cached;
 }

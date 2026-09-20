@@ -34,6 +34,12 @@ export type GuestLike = {
   name?: string;
 };
 
+export type TitleMark = {
+  tmdbId: number;
+  mediaType: MediaType;
+  name?: string;
+};
+
 export type SeenOnboarding = {
   movieIds: number[];
   showIds: number[];
@@ -48,6 +54,8 @@ export type GuestState = {
   likedVibes: string[];
   dislikedVibes: string[];
   seenOnboarding: SeenOnboarding;
+  watchlist: TitleMark[];
+  seen: TitleMark[];
 };
 
 export type ExtractedIntent = {

@@ -14,6 +14,7 @@ type Options = {
   userId: string;
   likes: GuestLike[];
   likedVibes: string[];
+  excludeTmdbIds?: number[];
   onActiveChange?: (active: boolean) => void;
 };
 
@@ -26,7 +27,7 @@ type RecommendToolArgs = {
   titles?: string[];
 };
 
-export function useRoomSession({ userId, likes, likedVibes, onActiveChange }: Options) {
+export function useRoomSession({ userId, likes, likedVibes, excludeTmdbIds, onActiveChange }: Options) {
   const [active, setActive] = useState(false);
   const [muted, setMuted] = useState(false);
   const [orb, setOrb] = useState<OrbState>("idle");
@@ -53,6 +54,7 @@ export function useRoomSession({ userId, likes, likedVibes, onActiveChange }: Op
   const liveBufferRef = useRef("");
   const likesRef = useRef(likes);
   const vibesRef = useRef(likedVibes);
+  const excludeRef = useRef(excludeTmdbIds ?? []);
   const userIdRef = useRef(userId);
   const startGenRef = useRef(0);
   const secretRef = useRef<{ value: string; expiresAt: number } | null>(null);
@@ -60,8 +62,9 @@ export function useRoomSession({ userId, likes, likedVibes, onActiveChange }: Op
   useEffect(() => {
     likesRef.current = likes;
     vibesRef.current = likedVibes;
+    excludeRef.current = excludeTmdbIds ?? [];
     userIdRef.current = userId;
-  }, [likedVibes, likes, userId]);
+  }, [excludeTmdbIds, likedVibes, likes, userId]);
 
   const beginSession = useCallback(
     (withMic: boolean, nextOrb: OrbState = withMic ? "listening" : "idle") => {
@@ -154,6 +157,7 @@ export function useRoomSession({ userId, likes, likedVibes, onActiveChange }: Op
           likedVibes: vibesRef.current,
           extract: intent,
           queryText,
+          excludeTmdbIds: excludeRef.current,
           sessionExcludeIds: suggestedIdsRef.current,
         }),
       });
@@ -347,6 +351,7 @@ export function useRoomSession({ userId, likes, likedVibes, onActiveChange }: Op
             likedVibes,
             extract: intent,
             queryText: text,
+            excludeTmdbIds: excludeRef.current,
             sessionExcludeIds: suggestedIdsRef.current,
           }),
         });
