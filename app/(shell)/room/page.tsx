@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
-import { createPortal } from "react-dom";
 import { Clapperboard, Mic, MicOff, Search, Users, X } from "lucide-react";
 import { BrandLogo } from "@/components/brand-logo";
+import { MobileOrbDock } from "@/components/mobile-orb-dock";
 import { VoiceOrb } from "@/components/voice-orb";
 import { PosterTiles } from "@/components/poster-tiles";
 import { HealthBanner } from "@/components/health-banner";
@@ -104,7 +104,8 @@ export default function RoomPage() {
           {hasResults ? (
             <VoiceOrb
               state={idleOrb}
-              size="sm"
+              size="xs"
+              docked
               onClick={startSession}
               disabled={connecting}
             />
@@ -138,25 +139,6 @@ function HeardQuote({
     <p className="max-w-sm text-center text-sm text-violet-100/80">
       “{lastHeard}”
     </p>
-  );
-}
-
-function MobileOrbDock({ children }: { children: ReactNode }) {
-  const [host, setHost] = useState<HTMLElement | null>(null);
-
-  useEffect(() => {
-    setHost(document.body);
-  }, []);
-
-  if (!host) return null;
-
-  return createPortal(
-    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center px-6 pb-[calc(3.25rem+var(--wn-safe-bottom,0px))] md:hidden">
-      <div className="flex w-fit flex-col items-center gap-3">
-        {children}
-      </div>
-    </div>,
-    host
   );
 }
 
