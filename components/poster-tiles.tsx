@@ -50,10 +50,7 @@ export function PosterTiles({
         </p>
       ) : layout === "rail" ? (
         <div className="@container h-full min-h-0 w-full">
-          <div
-            className="grid h-full min-h-0 w-full grid-cols-1 gap-1.5 overflow-hidden @4xl:grid-cols-3 @4xl:grid-rows-1 @4xl:place-items-center @4xl:gap-3"
-            style={{ gridTemplateRows: `repeat(${visible.length}, minmax(0, 1fr))` }}
-          >
+          <div className="grid h-full min-h-0 w-full grid-cols-1 grid-rows-3 gap-1.5 overflow-hidden @4xl:grid-cols-3 @4xl:grid-rows-1 @4xl:place-items-center @4xl:gap-3">
             {visible.map((title) => (
               <PosterTile
                 key={`${title.mediaType}-${title.tmdbId}`}
