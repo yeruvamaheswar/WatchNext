@@ -33,9 +33,19 @@ npm run dev                  # http://127.0.0.1:3000  (binds 0.0.0.0 for LAN)
 
 On a phone or another PC, open `http://<your-machine-ip>:3000` (Next prints a Network URL). LAN IPv4 hosts are allowed automatically. For a tunnel hostname, set `ALLOWED_DEV_ORIGIN`.
 
-Safari may require HTTPS for the mic; use a local HTTPS proxy if `getUserMedia` is blocked on HTTP.
+Safari may require HTTPS for the mic; put a reverse proxy or named tunnel in front of the app if `getUserMedia` is blocked on HTTP.
 
 Add to Home Screen for standalone PWA chrome (`display: standalone`, purple theme, Apple splash + icons).
+
+### Docker
+
+The image serves HTTP. Compose publishes `WATCHNEXT_PORT` (default `43300`) so it does not take port `3000`. Secrets stay in `.env.local`. TLS and hostnames stay on the host (tunnel or reverse proxy), not in this repo.
+
+```bash
+docker compose --env-file .env.local up -d --build
+```
+
+Set `WATCHNEXT_BIND=127.0.0.1` when only the host tunnel/proxy should reach the container. Leave `NEXT_PUBLIC_APP_URL` unset to use the request host, or set it to the public HTTPS origin.
 
 ### 2. Local Supabase (Docker)
 
@@ -104,6 +114,7 @@ Suggestions run on pause **and** watch-intent (or the **Suggest** button). Botto
 | --- | --- |
 | `npm run dev` | Next.js on `0.0.0.0:3000` |
 | `npm run build` / `npm start` | Production local server |
+| `docker compose --env-file .env.local up -d --build` | Production container on `WATCHNEXT_PORT` (default 43300) |
 | `npm run icons` | Generate favicon, PWA, Apple, and OG images |
 | `npm run ingest` | TMDB upsert + OpenAI embeddings |
 | `npx supabase start` | Local Postgres, Auth, Studio |
