@@ -48,7 +48,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <div
         className={cn(
           "min-h-0 flex-1",
-          active ? "flex flex-col" : "overflow-y-auto pb-20 md:pb-0"
+          active
+            ? "flex flex-col"
+            : "overflow-x-hidden overflow-y-auto pb-16 scrollbar-none md:pb-0"
         )}
       >
         {children}

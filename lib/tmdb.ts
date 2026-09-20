@@ -54,6 +54,8 @@ export type TmdbTitle = {
   genres: string[];
   keywords: string[];
   topCast: string[];
+  directors: string[];
+  creators: string[];
   posterPath: string | null;
   backdropPath: string | null;
   voteAverage: number | null;
@@ -107,6 +109,8 @@ export async function fetchPopular(mediaType: "movie" | "tv", page: number) {
     genres: (item.genre_ids ?? []).map((id) => genreMap[id]).filter(Boolean),
     keywords: [] as string[],
     topCast: [] as string[],
+    directors: [] as string[],
+    creators: [] as string[],
     posterPath: item.poster_path ?? null,
     backdropPath: item.backdrop_path ?? null,
     voteAverage: item.vote_average ?? null,
@@ -135,7 +139,11 @@ export async function enrichTitle(title: TmdbTitle): Promise<TmdbTitle> {
     release_date?: string;
     first_air_date?: string;
     keywords?: { keywords?: { name: string }[]; results?: { name: string }[] };
-    credits?: { cast?: { name: string }[] };
+    created_by?: { name: string }[];
+    credits?: {
+      cast?: { name: string }[];
+      crew?: { name: string; job?: string }[];
+    };
   }>(path, { append_to_response: "keywords,credits", language: "en-US" });
 
   const keywordBlock = data.keywords?.keywords ?? data.keywords?.results ?? [];
@@ -145,7 +153,20 @@ export async function enrichTitle(title: TmdbTitle): Promise<TmdbTitle> {
     tagline: data.tagline || title.tagline,
     genres: (data.genres ?? []).map((g) => g.name).filter(Boolean) || title.genres,
     keywords: keywordBlock.map((k) => k.name).filter(Boolean).slice(0, 12),
-    topCast: (data.credits?.cast ?? []).slice(0, 5).map((c) => c.name),
+    topCast: uniqueNames(
+      (data.credits?.cast ?? []).map((c) => c.name),
+      8
+    ),
+    directors: uniqueNames(
+      (data.credits?.crew ?? [])
+        .filter((c) => c.job === "Director" || c.job === "Co-Director")
+        .map((c) => c.name),
+      2
+    ),
+    creators: uniqueNames(
+      (data.created_by ?? []).map((c) => c.name),
+      2
+    ),
     posterPath: data.poster_path ?? title.posterPath,
     backdropPath: data.backdrop_path ?? title.backdropPath,
     voteAverage: data.vote_average ?? title.voteAverage,
@@ -176,7 +197,24 @@ export function toTitleCard(title: TmdbTitle): TitleCard {
     voteAverage: title.voteAverage,
     tagline: title.tagline,
     topCast: title.topCast,
+    directors: title.directors,
+    creators: title.creators,
   };
+}
+
+function uniqueNames(names: Array<string | undefined>, limit: number) {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const raw of names) {
+    const name = raw?.trim();
+    if (!name) continue;
+    const key = name.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(name);
+    if (out.length >= limit) break;
+  }
+  return out;
 }
 
 export function cardsWithPosters(cards: TitleCard[]): TitleCard[] {

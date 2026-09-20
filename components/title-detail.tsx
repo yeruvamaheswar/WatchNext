@@ -63,6 +63,21 @@ export function TitleDetail({
               {title.reason ? (
                 <p className="text-violet-200">{title.reason}</p>
               ) : null}
+              {title.directors?.length ? (
+                <p className="text-violet-100/80">
+                  Directed by {title.directors.join(", ")}
+                </p>
+              ) : null}
+              {title.creators?.length ? (
+                <p className="text-violet-100/80">
+                  Created by {title.creators.join(", ")}
+                </p>
+              ) : null}
+              {title.topCast?.length ? (
+                <p className="text-muted-foreground">
+                  {title.topCast.join(" · ")}
+                </p>
+              ) : null}
               <p className="text-muted-foreground">{title.overview}</p>
             </div>
           </>

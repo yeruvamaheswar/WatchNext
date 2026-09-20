@@ -14,6 +14,8 @@ export type TitleCard = {
   voteAverage: number | null;
   tagline?: string | null;
   topCast?: string[];
+  directors?: string[];
+  creators?: string[];
 };
 
 export type VibeCard = {

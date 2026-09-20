@@ -84,6 +84,8 @@ export function titleEmbedText(input: {
   keywords?: string[];
   tagline?: string | null;
   topCast?: string[];
+  directors?: string[];
+  creators?: string[];
   mediaType?: string;
   year?: number | null;
 }) {
@@ -97,6 +99,8 @@ export function titleEmbedText(input: {
     input.mediaType ?? "",
     input.tagline ?? "",
     tags.length ? `tags: ${tags.join(", ")}` : "",
+    input.directors?.length ? `director: ${input.directors.join(", ")}` : "",
+    input.creators?.length ? `creator: ${input.creators.join(", ")}` : "",
     (input.topCast ?? []).join(", "),
     input.overview ?? "",
   ]
