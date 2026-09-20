@@ -31,6 +31,8 @@ export const GUEST_SSR: GuestState = {
   likedVibes: [],
   dislikedVibes: [],
   seenOnboarding: emptySeen(),
+  watchlist: [],
+  seen: [],
 };
 
 export function emptyGuest(): GuestState {
@@ -42,6 +44,8 @@ export function emptyGuest(): GuestState {
     likedVibes: [],
     dislikedVibes: [],
     seenOnboarding: emptySeen(),
+    watchlist: [],
+    seen: [],
   };
 }
 
@@ -67,6 +71,8 @@ export function loadGuest(): GuestState {
         showIds: parsed.seenOnboarding?.showIds ?? [],
         vibeIds: parsed.seenOnboarding?.vibeIds ?? [],
       },
+      watchlist: parsed.watchlist ?? [],
+      seen: parsed.seen ?? [],
     };
   } catch {
     const fresh = emptyGuest();
@@ -102,4 +108,52 @@ export function upsertLike(likes: GuestLike[], next: GuestLike) {
     (l) => !(l.tmdbId === next.tmdbId && l.mediaType === next.mediaType)
   );
   return [...rest, next];
+}
+
+export function removeLike(
+  likes: GuestLike[],
+  mark: { tmdbId: number; mediaType: GuestLike["mediaType"] }
+) {
+  return likes.filter(
+    (like) => !(like.tmdbId === mark.tmdbId && like.mediaType === mark.mediaType)
+  );
+}
+
+export function isLikedTitle(
+  likes: GuestLike[],
+  mark: { tmdbId: number; mediaType: GuestLike["mediaType"] }
+) {
+  return likes.some(
+    (like) =>
+      like.tmdbId === mark.tmdbId &&
+      like.mediaType === mark.mediaType &&
+      like.verdict === "like"
+  );
+}
+
+export function hasMark(
+  marks: { tmdbId: number; mediaType: GuestLike["mediaType"] }[] | undefined,
+  next: { tmdbId: number; mediaType: GuestLike["mediaType"] }
+) {
+  return (marks ?? []).some(
+    (mark) => mark.tmdbId === next.tmdbId && mark.mediaType === next.mediaType
+  );
+}
+
+export function dropMark(
+  marks: { tmdbId: number; mediaType: GuestLike["mediaType"] }[] | undefined,
+  next: { tmdbId: number; mediaType: GuestLike["mediaType"] }
+) {
+  return (marks ?? []).filter(
+    (mark) => !(mark.tmdbId === next.tmdbId && mark.mediaType === next.mediaType)
+  );
+}
+
+export function toggleMark<T extends { tmdbId: number; mediaType: GuestLike["mediaType"] }>(
+  marks: T[] | undefined,
+  next: T
+) {
+  const current = marks ?? [];
+  if (hasMark(current, next)) return dropMark(current, next) as T[];
+  return [...current, next];
 }

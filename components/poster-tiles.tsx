@@ -4,6 +4,7 @@ import { useState } from "react";
 import { posterUrl } from "@/lib/poster";
 import { cn } from "@/lib/utils";
 import type { SuggestedTitle } from "@/lib/types";
+import { TitleActions } from "@/components/title-actions";
 import { TitleDetail } from "@/components/title-detail";
 
 export function PosterTiles({
@@ -61,9 +62,7 @@ function PosterTile({
   const src = posterUrl(title.posterPath, "w342");
 
   return (
-    <button
-      type="button"
-      onClick={() => onOpen(title)}
+    <article
       className={cn(
         "animate-in slide-in-from-bottom-4 fade-in-0 group overflow-hidden border border-white/10 bg-card text-left shadow-lg duration-300",
         layout === "rail"
@@ -71,12 +70,14 @@ function PosterTile({
           : "rounded-2xl"
       )}
     >
-      <div
+      <button
+        type="button"
+        onClick={() => onOpen(title)}
         className={cn(
           "bg-violet-950",
           layout === "rail"
             ? "h-full w-auto max-w-[46%] shrink-0 aspect-[2/3] @4xl:absolute @4xl:inset-0 @4xl:h-auto @4xl:w-auto @4xl:max-w-none @4xl:aspect-auto"
-            : "aspect-[2/3]"
+            : "block w-full aspect-[2/3]"
         )}
       >
         {src ? (
@@ -94,36 +95,42 @@ function PosterTile({
             {title.name.slice(0, 1)}
           </div>
         )}
-      </div>
+      </button>
       {layout === "rail" ? (
         <div className="flex min-w-0 flex-1 flex-col justify-center px-3.5 py-2 @4xl:absolute @4xl:inset-x-0 @4xl:bottom-0 @4xl:flex-none @4xl:bg-gradient-to-t @4xl:from-black/85 @4xl:via-black/45 @4xl:to-transparent @4xl:px-2 @4xl:pt-8 @4xl:pb-2">
-          <p className="line-clamp-2 text-base font-semibold leading-snug @4xl:line-clamp-1 @4xl:text-xs @4xl:font-medium @4xl:leading-tight">
-            {title.name}
-            {title.year ? (
-              <span className="font-medium text-muted-foreground @4xl:font-medium @4xl:text-white/60">
-                {" "}
-                ({title.year})
-              </span>
-            ) : null}
-          </p>
-          <p className="mt-1 line-clamp-3 text-sm leading-snug text-violet-100/85 @4xl:mt-0.5 @4xl:line-clamp-1 @4xl:text-[10px]">
-            {title.reason}
-          </p>
+          <button type="button" className="text-left" onClick={() => onOpen(title)}>
+            <p className="line-clamp-2 text-base font-semibold leading-snug @4xl:line-clamp-1 @4xl:text-xs @4xl:font-medium @4xl:leading-tight">
+              {title.name}
+              {title.year ? (
+                <span className="font-medium text-muted-foreground @4xl:font-medium @4xl:text-white/60">
+                  {" "}
+                  ({title.year})
+                </span>
+              ) : null}
+            </p>
+            <p className="mt-1 line-clamp-2 text-sm leading-snug text-violet-100/85 @4xl:mt-0.5 @4xl:line-clamp-1 @4xl:text-[10px]">
+              {title.reason}
+            </p>
+          </button>
+          <TitleActions title={title} layout="rail" />
         </div>
       ) : (
         <div className="space-y-1 p-3">
-          <p className="font-medium leading-tight">
-            {title.name}
-            {title.year ? (
-              <span className="text-muted-foreground"> ({title.year})</span>
-            ) : null}
-          </p>
-          <p className="line-clamp-1 text-xs text-muted-foreground">
-            {title.genres.slice(0, 3).join(" · ")}
-          </p>
-          <p className="line-clamp-2 text-xs text-violet-200/80">{title.reason}</p>
+          <button type="button" className="w-full text-left" onClick={() => onOpen(title)}>
+            <p className="font-medium leading-tight">
+              {title.name}
+              {title.year ? (
+                <span className="text-muted-foreground"> ({title.year})</span>
+              ) : null}
+            </p>
+            <p className="line-clamp-1 text-xs text-muted-foreground">
+              {title.genres.slice(0, 3).join(" · ")}
+            </p>
+            <p className="line-clamp-2 text-xs text-violet-200/80">{title.reason}</p>
+          </button>
+          <TitleActions title={title} layout="cards" />
         </div>
       )}
-    </button>
+    </article>
   );
 }

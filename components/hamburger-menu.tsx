@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Menu, SlidersHorizontal, UserRound, Settings, X } from "lucide-react";
 import { BrandLogo } from "@/components/brand-logo";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,15 @@ export function HamburgerMenu() {
   const { guest, isGuest } = useWatchNext();
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
+  const router = useRouter();
+
+  useEffect(() => {
+    for (const link of links) router.prefetch(link.href);
+  }, [router]);
+
+  useEffect(() => {
+    setOpen(false);
+  }, [pathname]);
 
   useEffect(() => {
     if (!open) return;
@@ -80,7 +89,11 @@ export function HamburgerMenu() {
                     <Link
                       key={link.href}
                       href={link.href}
-                      onClick={() => setOpen(false)}
+                      prefetch
+                      scroll={false}
+                      onClick={() => {
+                        if (active) setOpen(false);
+                      }}
                       className={`flex min-h-12 items-center gap-3 rounded-xl px-3 text-sm hover:bg-white/5 ${active ? "bg-white/10 text-violet-200" : ""}`}
                     >
                       <Icon className="size-4 text-violet-300" />

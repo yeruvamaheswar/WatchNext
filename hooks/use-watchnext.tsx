@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import type { Session } from "@supabase/supabase-js";
@@ -15,14 +16,25 @@ import {
   emptyGuest,
   GUEST_SSR,
   loadGuest,
+  dropMark,
+  hasMark,
   rememberSeenOnboarding,
+  removeLike,
   saveGuest,
+  toggleMark,
   upsertLike,
 } from "@/lib/guest-store";
 import { getPublicEnv } from "@/lib/public-env";
 import { supabaseFetchTimeoutMs } from "@/lib/supabase/timeout";
 import { abortableFetch, withTimeout } from "@/lib/with-timeout";
-import type { GuestLike, GuestState } from "@/lib/types";
+import {
+  fetchRemoteUserState,
+  isPersistedUserId,
+  mergeUserState,
+  saveRemoteUserState,
+  shouldPushLocal,
+} from "@/lib/user-state";
+import type { GuestLike, GuestState, TitleMark } from "@/lib/types";
 
 type WatchNextValue = {
   ready: boolean;
@@ -33,7 +45,10 @@ type WatchNextValue = {
   supabaseConfigured: boolean;
   setGuest: (next: GuestState) => void;
   recordVerdict: (like: GuestLike) => void;
+  removeLikedTitle: (mark: TitleMark) => void;
   setVibeVerdict: (id: string, liked: boolean) => void;
+  toggleWatchlist: (mark: TitleMark) => void;
+  toggleSeen: (mark: TitleMark) => void;
   completeOnboarding: () => Promise<void>;
   resetOnboarding: () => void;
   rememberOnboardingDeck: (seen: {
@@ -51,93 +66,111 @@ type WatchNextValue = {
 
 const WatchNextContext = createContext<WatchNextValue | null>(null);
 
+let cachedReady = false;
+let cachedGuest: GuestState | null = null;
+let cachedSession: Session | null = null;
+
 export function WatchNextProvider({ children }: { children: React.ReactNode }) {
-  const [ready, setReady] = useState(false);
-  const [guest, setGuestState] = useState<GuestState>(GUEST_SSR);
-  const [session, setSession] = useState<Session | null>(null);
+  const [ready, setReady] = useState(cachedReady);
+  const [guest, setGuestState] = useState<GuestState>(cachedGuest ?? GUEST_SSR);
+  const [session, setSession] = useState<Session | null>(cachedSession);
   const publicEnv = getPublicEnv();
   const supabaseConfigured = publicEnv.hasSupabase;
   const supabaseTimeout = supabaseFetchTimeoutMs(publicEnv.supabaseUrl);
+  const guestRef = useRef(guest);
+  const sessionRef = useRef(session);
+  const persistTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const tasteTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hydratedUserRef = useRef("");
+  guestRef.current = guest;
+  sessionRef.current = session;
+  cachedReady = ready;
+  cachedGuest = ready ? guest : cachedGuest;
+  cachedSession = session;
 
-  const setGuest = useCallback((next: GuestState) => {
-    setGuestState(next);
-    saveGuest(next);
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    let supabase = null as ReturnType<typeof createBrowserSupabase>;
-    try {
-      supabase = createBrowserSupabase();
-    } catch {
-      supabase = null;
-    }
-
-    try {
-      setGuestState(loadGuest());
-    } catch {
-      setGuestState(emptyGuest());
-    }
-    setReady(true);
-
-    if (supabase) {
-      void (async () => {
-        try {
-          const { data } = await withTimeout(supabase.auth.getSession(), supabaseTimeout);
-          if (cancelled) return;
-          if (data.session) {
-            setSession(data.session);
-            return;
-          }
-          const anon = await withTimeout(
-            supabase.auth.signInAnonymously(),
-            supabaseTimeout
-          );
-          if (!cancelled && !anon.error && anon.data.session) {
-            setSession(anon.data.session);
-          }
-        } catch {
-          // Local guest session is enough when Auth is down.
-        }
-      })();
-    }
-
-    const sub = supabase?.auth.onAuthStateChange((_event, next) => {
-      if (!cancelled) setSession(next);
+  const updateGuest = useCallback((updater: (prev: GuestState) => GuestState) => {
+    let next = guestRef.current;
+    setGuestState((prev) => {
+      next = updater(prev);
+      saveGuest(next);
+      guestRef.current = next;
+      return next;
     });
-
-    return () => {
-      cancelled = true;
-      sub?.data.subscription.unsubscribe();
-    };
+    return next;
   }, []);
 
-  const userId = session?.user.id ?? guest.guestId;
-  const isGuest = !session || Boolean(session.user.is_anonymous);
-
-  const recordVerdict = useCallback(
-    (like: GuestLike) => {
-      setGuest({ ...guest, likes: upsertLike(guest.likes, like) });
+  const setGuest = useCallback(
+    (next: GuestState) => {
+      updateGuest(() => next);
     },
-    [guest, setGuest]
+    [updateGuest]
   );
 
-  const setVibeVerdict = useCallback(
-    (id: string, liked: boolean) => {
-      const likedVibes = liked
-        ? [...new Set([...guest.likedVibes.filter((v) => v !== id), id])]
-        : guest.likedVibes.filter((v) => v !== id);
-      const dislikedVibes = liked
-        ? guest.dislikedVibes.filter((v) => v !== id)
-        : [...new Set([...guest.dislikedVibes.filter((v) => v !== id), id])];
-      setGuest({ ...guest, likedVibes, dislikedVibes });
+  const persistLists = useCallback(
+    async (state: GuestState, extra: { onboardingComplete?: boolean } = {}) => {
+      const id = sessionRef.current?.user.id ?? state.guestId;
+      if (!supabaseConfigured || !isPersistedUserId(id)) {
+        return { ok: true, persisted: false };
+      }
+      return saveRemoteUserState(
+        {
+          userId: id,
+          displayName: state.displayName,
+          isGuest: !sessionRef.current || Boolean(sessionRef.current.user.is_anonymous),
+          likes: state.likes,
+          likedVibes: state.likedVibes,
+          watchlist: state.watchlist,
+          seen: state.seen,
+          onboardingComplete: extra.onboardingComplete ?? state.onboardingComplete,
+        },
+        supabaseTimeout
+      );
     },
-    [guest, setGuest]
+    [supabaseConfigured, supabaseTimeout]
+  );
+
+  const schedulePersistLists = useCallback(
+    (state: GuestState) => {
+      if (persistTimer.current) clearTimeout(persistTimer.current);
+      persistTimer.current = setTimeout(() => {
+        void persistLists(state).catch(() => {});
+      }, 400);
+    },
+    [persistLists]
+  );
+
+  const scheduleTasteRefresh = useCallback(
+    (state: GuestState) => {
+      if (!state.onboardingComplete) return;
+      if (tasteTimer.current) clearTimeout(tasteTimer.current);
+      tasteTimer.current = setTimeout(() => {
+        const id = sessionRef.current?.user.id ?? state.guestId;
+        if (!isPersistedUserId(id)) return;
+        void abortableFetch(
+          "/api/taste/recompute",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              userId: id,
+              likes: state.likes,
+              likedVibes: state.likedVibes,
+              displayName: state.displayName,
+              isGuest: !sessionRef.current || Boolean(sessionRef.current.user.is_anonymous),
+            }),
+          },
+          supabaseTimeout + 10_000
+        ).catch(() => {});
+      }, 800);
+    },
+    [supabaseTimeout]
   );
 
   const persistTaste = useCallback(
     async (state: GuestState, id: string, guestFlag: boolean) => {
       try {
+        await persistLists(state, { onboardingComplete: true });
+        if (!isPersistedUserId(id)) return;
         await abortableFetch(
           "/api/onboarding/complete",
           {
@@ -157,50 +190,213 @@ export function WatchNextProvider({ children }: { children: React.ReactNode }) {
         // Local guest taste still counts.
       }
     },
-    [supabaseTimeout]
+    [persistLists, supabaseTimeout]
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    let supabase = null as ReturnType<typeof createBrowserSupabase>;
+    try {
+      supabase = createBrowserSupabase();
+    } catch {
+      supabase = null;
+    }
+
+    let local = emptyGuest();
+    try {
+      local = loadGuest();
+    } catch {
+      local = emptyGuest();
+    }
+    setGuestState(local);
+    guestRef.current = local;
+
+    const hydrate = async (userId: string) => {
+      if (cancelled || !isPersistedUserId(userId)) return;
+      try {
+        const remote = await fetchRemoteUserState(userId, supabaseTimeout);
+        if (cancelled) return;
+        const local = guestRef.current;
+        const merged = mergeUserState(local, remote, userId);
+        updateGuest(() => merged);
+        hydratedUserRef.current = userId;
+        if (shouldPushLocal(local, remote)) {
+          void persistLists(merged).catch(() => {});
+        }
+      } catch {
+        updateGuest((prev) => ({ ...prev, guestId: userId || prev.guestId }));
+      }
+    };
+
+    void (async () => {
+      if (!supabase) {
+        await hydrate(local.guestId);
+        if (!cancelled) setReady(true);
+        return;
+      }
+
+      try {
+        const { data } = await withTimeout(supabase.auth.getSession(), supabaseTimeout);
+        if (cancelled) return;
+        let nextSession = data.session;
+        if (!nextSession) {
+          const anon = await withTimeout(
+            supabase.auth.signInAnonymously(),
+            supabaseTimeout
+          );
+          if (!anon.error && anon.data.session) nextSession = anon.data.session;
+        }
+        if (cancelled) return;
+        setSession(nextSession);
+        sessionRef.current = nextSession;
+        await hydrate(nextSession?.user.id || local.guestId);
+      } catch {
+        // Local guest session is enough when Auth is down.
+      } finally {
+        if (!cancelled) setReady(true);
+      }
+    })();
+
+    const sub = supabase?.auth.onAuthStateChange((event, next) => {
+      if (cancelled) return;
+      setSession(next);
+      sessionRef.current = next;
+      if (
+        next &&
+        (event === "SIGNED_IN" || event === "USER_UPDATED") &&
+        next.user.id !== hydratedUserRef.current
+      ) {
+        void hydrate(next.user.id);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+      sub?.data.subscription.unsubscribe();
+      if (persistTimer.current) clearTimeout(persistTimer.current);
+      if (tasteTimer.current) clearTimeout(tasteTimer.current);
+    };
+  }, [persistLists, supabaseTimeout, updateGuest]);
+
+  const userId = session?.user.id ?? guest.guestId;
+  const isGuest = !session || Boolean(session.user.is_anonymous);
+
+  const recordVerdict = useCallback(
+    (like: GuestLike) => {
+      const next = updateGuest((prev) => ({
+        ...prev,
+        likes: upsertLike(prev.likes, like),
+      }));
+      schedulePersistLists(next);
+      scheduleTasteRefresh(next);
+    },
+    [schedulePersistLists, scheduleTasteRefresh, updateGuest]
+  );
+
+  const removeLikedTitle = useCallback(
+    (mark: TitleMark) => {
+      const next = updateGuest((prev) => ({
+        ...prev,
+        likes: removeLike(prev.likes, mark),
+      }));
+      schedulePersistLists(next);
+      scheduleTasteRefresh(next);
+    },
+    [schedulePersistLists, scheduleTasteRefresh, updateGuest]
+  );
+
+  const setVibeVerdict = useCallback(
+    (id: string, liked: boolean) => {
+      const next = updateGuest((prev) => {
+        const likedVibes = liked
+          ? [...new Set([...prev.likedVibes.filter((v) => v !== id), id])]
+          : prev.likedVibes.filter((v) => v !== id);
+        const dislikedVibes = liked
+          ? prev.dislikedVibes.filter((v) => v !== id)
+          : [...new Set([...prev.dislikedVibes.filter((v) => v !== id), id])];
+        return { ...prev, likedVibes, dislikedVibes };
+      });
+      schedulePersistLists(next);
+    },
+    [schedulePersistLists, updateGuest]
+  );
+
+  const toggleWatchlist = useCallback(
+    (mark: TitleMark) => {
+      const next = updateGuest((prev) => {
+        const watchlist = toggleMark(prev.watchlist ?? [], mark);
+        return {
+          ...prev,
+          watchlist,
+          seen: hasMark(watchlist, mark) ? dropMark(prev.seen, mark) : prev.seen,
+        };
+      });
+      schedulePersistLists(next);
+    },
+    [schedulePersistLists, updateGuest]
+  );
+
+  const toggleSeen = useCallback(
+    (mark: TitleMark) => {
+      const next = updateGuest((prev) => {
+        const seen = toggleMark(prev.seen ?? [], mark);
+        return {
+          ...prev,
+          seen,
+          watchlist: hasMark(seen, mark) ? dropMark(prev.watchlist, mark) : prev.watchlist,
+        };
+      });
+      schedulePersistLists(next);
+    },
+    [schedulePersistLists, updateGuest]
   );
 
   const completeOnboarding = useCallback(async () => {
-    const next = { ...guest, onboardingComplete: true };
-    setGuest(next);
-    void persistTaste(next, userId || next.guestId, isGuest);
-  }, [guest, isGuest, persistTaste, setGuest, userId]);
+    const next = updateGuest((prev) => ({ ...prev, onboardingComplete: true }));
+    const id = sessionRef.current?.user.id ?? next.guestId;
+    const guestFlag = !sessionRef.current || Boolean(sessionRef.current.user.is_anonymous);
+    await persistTaste(next, id || next.guestId, guestFlag);
+  }, [persistTaste, updateGuest]);
 
   const resetOnboarding = useCallback(() => {
-    setGuest({
-      ...guest,
+    const next = updateGuest((prev) => ({
+      ...prev,
       onboardingComplete: false,
       likes: [],
       likedVibes: [],
       dislikedVibes: [],
-    });
-  }, [guest, setGuest]);
+    }));
+    void persistLists(next, { onboardingComplete: false }).catch(() => {});
+  }, [persistLists, updateGuest]);
 
   const rememberOnboardingDeck = useCallback(
     (seen: { movieIds: number[]; showIds: number[]; vibeIds: string[] }) => {
-      setGuest({
-        ...guest,
-        seenOnboarding: rememberSeenOnboarding(guest.seenOnboarding, seen),
-      });
+      updateGuest((prev) => ({
+        ...prev,
+        seenOnboarding: rememberSeenOnboarding(prev.seenOnboarding, seen),
+      }));
     },
-    [guest, setGuest]
+    [updateGuest]
   );
 
   const setDisplayName = useCallback(
     async (name: string) => {
       const trimmed = name.trim() || "Guest";
-      setGuest({ ...guest, displayName: trimmed });
+      const next = updateGuest((prev) => ({ ...prev, displayName: trimmed }));
+      const id = sessionRef.current?.user.id ?? next.guestId;
+      await persistLists(next).catch(() => {});
+      if (!isPersistedUserId(id)) return;
       await abortableFetch(
         "/api/profile",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ userId, displayName: trimmed }),
+          body: JSON.stringify({ userId: id, displayName: trimmed }),
         },
         supabaseTimeout
       ).catch(() => {});
     },
-    [guest, setGuest, userId, supabaseTimeout]
+    [persistLists, supabaseTimeout, updateGuest]
   );
 
   const signIn = useCallback(async (email: string, password: string) => {
@@ -220,12 +416,12 @@ export function WatchNextProvider({ children }: { children: React.ReactNode }) {
       supabase.auth.signUp({
         email,
         password,
-        options: { data: { display_name: guest.displayName } },
+        options: { data: { display_name: guestRef.current.displayName } },
       }),
       supabaseTimeout
     );
     if (error) throw error;
-  }, [guest.displayName, supabaseTimeout]);
+  }, [supabaseTimeout]);
 
   const signOut = useCallback(async () => {
     const supabase = createBrowserSupabase();
@@ -234,7 +430,9 @@ export function WatchNextProvider({ children }: { children: React.ReactNode }) {
     } catch {
       // Local session still clears.
     }
+    hydratedUserRef.current = "";
     setSession(null);
+    sessionRef.current = null;
   }, [supabaseTimeout]);
 
   const deleteLocalSession = useCallback(async () => {
@@ -248,12 +446,17 @@ export function WatchNextProvider({ children }: { children: React.ReactNode }) {
     const fresh = emptyGuest();
     setGuestState(fresh);
     saveGuest(fresh);
+    guestRef.current = fresh;
+    hydratedUserRef.current = "";
     setSession(null);
+    sessionRef.current = null;
   }, [supabaseTimeout]);
 
   const continueAsGuest = useCallback(async () => {
     const supabase = createBrowserSupabase();
     setSession(null);
+    sessionRef.current = null;
+    hydratedUserRef.current = "";
     if (!supabase) return;
     try {
       await withTimeout(supabase.auth.signOut(), supabaseTimeout);
@@ -265,11 +468,17 @@ export function WatchNextProvider({ children }: { children: React.ReactNode }) {
         supabase.auth.signInAnonymously(),
         supabaseTimeout
       );
-      if (!error && data.session) setSession(data.session);
+      if (!error && data.session) {
+        setSession(data.session);
+        sessionRef.current = data.session;
+        const merged = mergeUserState(guestRef.current, null, data.session.user.id);
+        updateGuest(() => merged);
+        void persistLists(merged).catch(() => {});
+      }
     } catch {
       // Stay on the local guest profile.
     }
-  }, [supabaseTimeout]);
+  }, [persistLists, supabaseTimeout, updateGuest]);
 
   const value = useMemo(
     () => ({
@@ -281,7 +490,10 @@ export function WatchNextProvider({ children }: { children: React.ReactNode }) {
       supabaseConfigured,
       setGuest,
       recordVerdict,
+      removeLikedTitle,
       setVibeVerdict,
+      toggleWatchlist,
+      toggleSeen,
       completeOnboarding,
       resetOnboarding,
       rememberOnboardingDeck,
@@ -301,7 +513,10 @@ export function WatchNextProvider({ children }: { children: React.ReactNode }) {
       supabaseConfigured,
       setGuest,
       recordVerdict,
+      removeLikedTitle,
       setVibeVerdict,
+      toggleWatchlist,
+      toggleSeen,
       completeOnboarding,
       resetOnboarding,
       rememberOnboardingDeck,

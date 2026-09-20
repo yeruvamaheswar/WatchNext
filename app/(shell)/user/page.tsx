@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,10 @@ import { primaryActionClass } from "@/lib/button-styles";
 export default function UserPage() {
   const { guest, isGuest, setDisplayName } = useWatchNext();
   const [name, setName] = useState(guest.displayName);
+
+  useEffect(() => {
+    setName(guest.displayName);
+  }, [guest.displayName]);
 
   return (
     <main className="mx-auto flex max-w-lg flex-col gap-5 px-4 py-6">

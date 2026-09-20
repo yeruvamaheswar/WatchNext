@@ -69,6 +69,19 @@ function buildQueryText(input: RecommendInput) {
     : "just pick something great to watch tonight";
 }
 
+async function loadSeenIds(userId: string | null | undefined) {
+  if (!userId) return [];
+  const supabase = tryCreateAdminSupabase();
+  if (!supabase) return [];
+  const { data } = await supabase
+    .from("user_seen")
+    .select("tmdb_id")
+    .eq("user_id", userId);
+  return (data ?? [])
+    .map((row) => row.tmdb_id)
+    .filter((id): id is number => typeof id === "number");
+}
+
 async function loadTasteVector(userId: string | null | undefined) {
   if (!userId) return null;
   const supabase = tryCreateAdminSupabase();
@@ -319,6 +332,7 @@ export async function recommend(input: RecommendInput): Promise<RecommendResult>
   const queryEmbedding = await embedText(queryText);
   const storedTaste = await loadTasteVector(input.userId);
   const likeTaste = storedTaste ?? (await tasteFromLikes(input.likes));
+  const seenIds = await loadSeenIds(input.userId);
   // Group: discussion-heavy (~85% conversation). Solo: 55% query / 45% taste.
   const blendWeight = input.mode === "group" ? 0.85 : 0.55;
   const blended = blendVectors(queryEmbedding, likeTaste, blendWeight);
@@ -326,6 +340,7 @@ export async function recommend(input: RecommendInput): Promise<RecommendResult>
   const exclude = [
     ...new Set([
       ...dislikedIds(input.likes),
+      ...seenIds,
       ...(input.excludeTmdbIds ?? []),
       ...(input.sessionExcludeIds ?? []),
     ]),

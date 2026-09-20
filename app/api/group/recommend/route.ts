@@ -13,6 +13,7 @@ type GroupRecommendBody = {
   likes?: GuestLike[];
   likedVibes?: string[];
   userId?: string | null;
+  excludeTmdbIds?: number[];
   sessionExcludeIds?: number[];
 };
 
@@ -65,6 +66,7 @@ export async function POST(request: Request) {
         likes: body.likes,
         likedVibes: body.likedVibes,
         userId: body.userId,
+        excludeTmdbIds: body.excludeTmdbIds,
         sessionExcludeIds: body.sessionExcludeIds,
       })),
       segments,

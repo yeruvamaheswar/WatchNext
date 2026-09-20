@@ -8,6 +8,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { badgeVariants } from "@/components/ui/badge";
+import { TitleActions } from "@/components/title-actions";
 import { posterUrl } from "@/lib/poster";
 import { cn } from "@/lib/utils";
 import type { SuggestedTitle } from "@/lib/types";
@@ -20,6 +21,7 @@ export function TitleDetail({
   onClose: () => void;
 }) {
   const src = posterUrl(title?.posterPath, "w342");
+
   return (
     <Dialog open={Boolean(title)} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-md overflow-hidden border-white/10 bg-[#160a24] p-0">
@@ -79,6 +81,7 @@ export function TitleDetail({
                 </p>
               ) : null}
               <p className="text-muted-foreground">{title.overview}</p>
+              <TitleActions title={title} layout="detail" />
             </div>
           </>
         ) : null}
